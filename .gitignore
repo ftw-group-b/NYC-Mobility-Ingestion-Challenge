@@ -1,0 +1,29 @@
+# macOS
+.DS_Store
+
+# environment and secrets
+.env
+.env.*
+*.pem
+*.key
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+
+# IDE / editor
+.idea/
+.vscode/
+
+# temporary files
+*.tmp
+*.log
+*.swp
+
+# local raw data folders
+data/
+raw_data/
+downloads/
