@@ -1,0 +1,116 @@
+name: NYC Mobility CI Quality Gates
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/**"
+      - "chore/**"
+      - "docs/**"
+      - "ci/**"
+
+  pull_request:
+    branches:
+      - main
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-project:
+    name: Validate NYC Mobility project
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check required project directories
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          required_dirs=(
+            "src"
+            "notebooks"
+            "tests"
+            "docs"
+            "dashboard"
+          )
+
+          for directory in "${required_dirs[@]}"; do
+            if [[ ! -d "$directory" ]]; then
+              echo "ERROR: Missing required directory: $directory"
+              exit 1
+            fi
+
+            echo "PASS: Found $directory/"
+          done
+
+      - name: Check README
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ ! -s README.md ]]; then
+            echo "ERROR: README.md is missing or empty"
+            exit 1
+          fi
+
+          echo "PASS: README.md exists and is not empty"
+
+      - name: Validate SQL files when present
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mapfile -t sql_files < <(find src tests -type f -name "*.sql" | sort)
+
+          if [[ "${#sql_files[@]}" -eq 0 ]]; then
+            echo "INFO: No SQL files committed yet"
+            exit 0
+          fi
+
+          for file in "${sql_files[@]}"; do
+            if [[ ! -s "$file" ]]; then
+              echo "ERROR: SQL file is empty: $file"
+              exit 1
+            fi
+
+            echo "PASS: $file"
+          done
+
+      - name: Validate Python files when present
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mapfile -t python_files < <(
+            find src notebooks -type f -name "*.py" | sort
+          )
+
+          if [[ "${#python_files[@]}" -eq 0 ]]; then
+            echo "INFO: No Python files committed yet"
+            exit 0
+          fi
+
+          python -m py_compile "${python_files[@]}"
+
+          echo "PASS: Python syntax validation completed"
+
+      - name: Prevent raw Parquet files from entering Git
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          parquet_files=$(git ls-files "*.parquet")
+
+          if [[ -n "$parquet_files" ]]; then
+            echo "ERROR: Raw Parquet files should remain in R2, not GitHub"
+            echo "$parquet_files"
+            exit 1
+          fi
+
+          echo "PASS: No Parquet source files tracked"
