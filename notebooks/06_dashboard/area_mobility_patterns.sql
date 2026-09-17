@@ -1,12 +1,12 @@
 -- Databricks notebook source
 -- Databricks notebook source
 -- Name: Area Mobility Patterns
--- Purpose: Identify zones with strong pickup/drop-off activity, longer trips,
--- higher fare activity, peak hours, and weather-related demand patterns.
+-- Purpose: Compare pickup/drop-off activity, trip characteristics, trip amounts, peak pickup hours, and weather-related pickup patterns across NYC taxi zones.
 -- Grain: One row per pickup taxi zone.
+-- All metrics are aggregated to the pickup taxi zone level
 -- Depends on: Gold fact_green_taxi_trip, dim_taxi_zone, and dim_weather_hour.
 -- Why: Supports comparison of mobility patterns across NYC taxi zones.
--- Note: High activity does not automatically mean a zone is profitable or underserved.
+-- Note: High activity or trip amounts do not automatically indicate profitability, revenue, or underserved areas.
 
 WITH pickup_metrics AS (
     SELECT
@@ -15,10 +15,15 @@ WITH pickup_metrics AS (
         COUNT(*) AS pickup_trip_volume,
         COUNT(DISTINCT TO_DATE(f.pickup_datetime)) AS active_pickup_days,
 
+-- Number of distinct calendar dates with at least one pickup
+
         ROUND(AVG(f.trip_duration_minutes), 2) AS avg_trip_duration_minutes,
         ROUND(AVG(f.trip_distance), 2) AS avg_trip_distance_miles,
-        ROUND(SUM(f.total_amount), 2) AS total_fare_activity,
-        ROUND(AVG(f.total_amount), 2) AS avg_fare_amount,
+        ROUND(SUM(f.total_amount), 2) AS total_trip_amount,
+        ROUND(AVG(f.total_amount), 2) AS avg_trip_amount,
+
+-- Count of pickups whose weather hour falls under an adverse WMO weather code,
+-- per the classification defined by WMO weather-code mapping
 
         SUM(
             CASE
@@ -30,6 +35,8 @@ WITH pickup_metrics AS (
                 ELSE 0
             END
         ) AS adverse_weather_pickups,
+
+-- Count pickups occurring under clear/cloudy weather codes.
 
         SUM(
             CASE
@@ -44,6 +51,13 @@ WITH pickup_metrics AS (
     LEFT JOIN `ftw-week-08`.`03_gold`.dim_weather_hour AS w
         ON f.pickup_weather_hour_key = w.weather_hour_key
 
+-- WMO weather-code ranges classified as adverse conditions:
+--   51-57 = Drizzle
+--   61-67 = Rain
+--   71-77 = Snow
+--   80-86 = Showers
+--   95-99 = Thunderstorm
+    WHERE dq_out_of_range_datetime = FALSE
     GROUP BY f.pickup_taxi_zone_key
 ),
 
@@ -53,7 +67,7 @@ dropoff_metrics AS (
         COUNT(*) AS dropoff_trip_volume
 
     FROM `ftw-week-08`.`03_gold`.fact_green_taxi_trip
-
+    WHERE dq_out_of_range_datetime = FALSE
     GROUP BY dropoff_taxi_zone_key
 ),
 
@@ -64,7 +78,7 @@ zone_hour_counts AS (
         COUNT(*) AS trip_volume
 
     FROM `ftw-week-08`.`03_gold`.fact_green_taxi_trip
-
+    WHERE dq_out_of_range_datetime = FALSE
     GROUP BY
         pickup_taxi_zone_key,
         pickup_time_key
@@ -101,14 +115,17 @@ SELECT
 
     p.avg_trip_duration_minutes,
     p.avg_trip_distance_miles,
-    p.total_fare_activity,
-    p.avg_fare_amount,
+    p.total_trip_amount,
+    p.avg_trip_amount,
 
     ph.peak_pickup_hour,
     ph.peak_hour_trip_volume,
 
     p.adverse_weather_pickups,
     p.clear_or_cloudy_pickups,
+
+-- Percentage of classified pickups (adverse + clear/cloudy) that occurred in adverse weather.
+-- Trips with an unclassified weather condition (e.g. Fog, Unknown) are excluded from the denominator.
 
     ROUND(
         100.0 * p.adverse_weather_pickups /
@@ -132,4 +149,4 @@ LEFT JOIN `ftw-week-08`.`03_gold`.dim_taxi_zone AS z
 
 ORDER BY
     p.pickup_trip_volume DESC,
-    p.total_fare_activity DESC;
+    p.total_trip_amount DESC;

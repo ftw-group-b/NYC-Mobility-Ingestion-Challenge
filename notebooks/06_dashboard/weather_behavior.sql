@@ -42,6 +42,8 @@ WITH trip_weather AS (
 
     INNER JOIN `ftw-week-08`.`03_gold`.dim_weather_hour AS w
         ON f.pickup_weather_hour_key = w.weather_hour_key
+
+    WHERE f.dq_out_of_range_datetime = FALSE
 )
 
 SELECT
