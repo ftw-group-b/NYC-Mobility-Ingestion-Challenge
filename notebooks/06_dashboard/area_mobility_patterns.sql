@@ -1,5 +1,4 @@
 -- Databricks notebook source
--- Databricks notebook source
 -- Name: Area Mobility Patterns
 -- Purpose: Compare pickup/drop-off activity, trip characteristics, trip amounts, peak pickup hours, and weather-related pickup patterns across NYC taxi zones.
 -- Grain: One row per pickup taxi zone.
@@ -12,10 +11,9 @@ WITH pickup_metrics AS (
     SELECT
         f.pickup_taxi_zone_key AS taxi_zone_key,
 
+-- Number of distinct calendar dates with at least one pickup
         COUNT(*) AS pickup_trip_volume,
         COUNT(DISTINCT TO_DATE(f.pickup_datetime)) AS active_pickup_days,
-
--- Number of distinct calendar dates with at least one pickup
 
         ROUND(AVG(f.trip_duration_minutes), 2) AS avg_trip_duration_minutes,
         ROUND(AVG(f.trip_distance), 2) AS avg_trip_distance_miles,
@@ -37,6 +35,12 @@ WITH pickup_metrics AS (
         ) AS adverse_weather_pickups,
 
 -- Count pickups occurring under clear/cloudy weather codes.
+-- WMO weather-code ranges classified as adverse conditions:
+--   51-57 = Drizzle
+--   61-67 = Rain
+--   71-77 = Snow
+--   80-86 = Showers
+--   95-99 = Thunderstorm
 
         SUM(
             CASE
@@ -51,12 +55,6 @@ WITH pickup_metrics AS (
     LEFT JOIN `ftw-week-08`.`03_gold`.dim_weather_hour AS w
         ON f.pickup_weather_hour_key = w.weather_hour_key
 
--- WMO weather-code ranges classified as adverse conditions:
---   51-57 = Drizzle
---   61-67 = Rain
---   71-77 = Snow
---   80-86 = Showers
---   95-99 = Thunderstorm
     WHERE dq_out_of_range_datetime = FALSE
     GROUP BY f.pickup_taxi_zone_key
 ),
