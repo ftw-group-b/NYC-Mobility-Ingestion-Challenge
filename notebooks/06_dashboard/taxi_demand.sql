@@ -9,7 +9,8 @@
 SELECT
     TO_DATE(f.pickup_datetime) AS pickup_date,
     DATE_FORMAT(f.pickup_datetime, 'EEEE') AS pickup_day_name,
-    f.pickup_time_key AS pickup_hour,
+    f.pickup_taxi_zone_key,
+    t.hour_24 AS pickup_hour_24,
     t.hour_label AS pickup_hour_label,
 
     z.zone_name AS pickup_zone,
@@ -18,7 +19,7 @@ SELECT
     COUNT(*) AS trip_volume,
     ROUND(AVG(f.trip_duration_minutes), 2) AS avg_trip_duration_minutes,
     ROUND(AVG(f.trip_distance), 2) AS avg_trip_distance_miles,
-    ROUND(SUM(f.total_amount), 2) AS total_fare_amount
+    ROUND(SUM(f.total_amount), 2) AS total_trip_amount
 
 FROM `ftw-week-08`.`03_gold`.fact_green_taxi_trip AS f
 
@@ -33,7 +34,8 @@ WHERE f.dq_out_of_range_datetime = FALSE
 GROUP BY
     TO_DATE(f.pickup_datetime),
     DATE_FORMAT(f.pickup_datetime, 'EEEE'),
-    f.pickup_time_key,
+    f.pickup_taxi_zone_key,
+    t.hour_24,
     t.hour_label,
     z.zone_name,
     z.borough
