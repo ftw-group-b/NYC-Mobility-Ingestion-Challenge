@@ -34,7 +34,7 @@ resources:
           depends_on:
             - task_key: bronze_load
           notebook_task:
-            notebook_path: ../notebooks/05_validation/04_bronze_validation.ipynb
+            notebook_path: ../notebooks/05_validation/bronze_validation/04_bronze_validation.ipynb
             source: WORKSPACE
 
         # The three Silver source transformations can run independently after
