@@ -28,7 +28,6 @@ concurrency:
 env:
   DATABRICKS_HOST: ${{ vars.DATABRICKS_HOST }}
   DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
-  DATABRICKS_CLUSTER_ID: ${{ vars.DATABRICKS_CLUSTER_ID }}
 
 jobs:
   deploy:
@@ -50,30 +49,15 @@ jobs:
             echo "Missing repository secret: DATABRICKS_TOKEN"
             exit 1
           fi
-          if [ -z "$DATABRICKS_CLUSTER_ID" ]; then
-            echo "Missing repository variable: DATABRICKS_CLUSTER_ID"
-            exit 1
-          fi
-
       - name: Install Databricks CLI
         uses: databricks/setup-cli@main
 
       - name: Validate bundle
-        run: >-
-          databricks bundle validate
-          -t prod
-          --var="cluster_id=${DATABRICKS_CLUSTER_ID}"
+        run: databricks bundle validate -t prod
 
       - name: Deploy bundle
-        run: >-
-          databricks bundle deploy
-          -t prod
-          --var="cluster_id=${DATABRICKS_CLUSTER_ID}"
+        run: databricks bundle deploy -t prod
 
       - name: Run Source-to-Gold pipeline
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_pipeline }}
-        run: >-
-          databricks bundle run
-          -t prod
-          --var="cluster_id=${DATABRICKS_CLUSTER_ID}"
-          nyc_mobility_pipeline
+        run: databricks bundle run -t prod nyc_mobility_pipeline
