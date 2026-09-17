@@ -1,7 +1,9 @@
 # Business Analytics
 
-1. `01_taxi_demand.sql`
-2. `02_weather_behavior.sql`
-3. `03_area_mobility_patterns.sql`
+`01_business_analytics.ipynb` is the documented, compiled Databricks notebook used by the job. It creates:
 
-Each SQL notebook creates one dashboard-ready Gold view. Business questions stay separate from the Gold table build.
+- `analytics_taxi_demand`
+- `analytics_weather_behavior`
+- `analytics_area_mobility_patterns`
+
+The individual table-level queries remain in `src/05_analytics/`. Analytics validation remains in `tests/analytics/`, so creation and validation are separate without duplicate notebook folders.

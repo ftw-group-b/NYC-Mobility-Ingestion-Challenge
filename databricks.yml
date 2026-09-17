@@ -8,11 +8,9 @@ include:
 sync:
   include:
     - notebooks/**/*.ipynb
-    - notebooks/**/*.sql
     - src/**/*.sql
     - src/**/*.py
     - tests/**/*.ipynb
-    - tests/**/*.sql
 
 targets:
   dev:

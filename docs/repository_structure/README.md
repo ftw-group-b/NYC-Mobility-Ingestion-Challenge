@@ -13,7 +13,7 @@ These are the documented, runnable Databricks assets used by the job:
 | `02_bronze` | Compiled Bronze setup and loads |
 | `03_silver` | Compiled Silver transformations |
 | `04_gold` | Compiled star-schema creation |
-| `05_analytics` | Compiled business-question views |
+| `05_analytics` | One compiled notebook for all business-question views |
 | `06_dashboard` | Compiled Data Quality Dashboard views |
 
 ## `src/` — modular table queries
@@ -39,4 +39,4 @@ The final end-to-end test publishes the consolidated quality result and fails th
 - table and view names match their Gold or Silver objects; and
 - `README.md` is the only intentional uppercase filename.
 
-Duplicate numbered/un-numbered notebooks, duplicate test documents, and retired placeholder code are excluded from the clean delivery.
+Duplicate numbered notebooks, duplicate validation folders, SQL notebook exports, and retired placeholder code are excluded from the clean delivery.
