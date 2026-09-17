@@ -1,7 +1,54 @@
 -- Databricks notebook source
--- 1. Executive Overview
+-- 1. Referential Integrity
+CREATE OR REPLACE VIEW `ftw-week-08`.`03_gold`.dq_dashboard_referential_integrity AS
+SELECT
+  SUM(CASE WHEN d_pickup.date_key IS NULL THEN 1 ELSE 0 END) AS missing_pickup_date_keys,
+  SUM(CASE WHEN d_dropoff.date_key IS NULL THEN 1 ELSE 0 END) AS missing_dropoff_date_keys,
+  SUM(CASE WHEN t_pickup.time_key IS NULL THEN 1 ELSE 0 END) AS missing_pickup_time_keys,
+  SUM(CASE WHEN t_dropoff.time_key IS NULL THEN 1 ELSE 0 END) AS missing_dropoff_time_keys,
+  SUM(CASE WHEN z_pickup.taxi_zone_key IS NULL THEN 1 ELSE 0 END) AS missing_pickup_zone_keys,
+  SUM(CASE WHEN z_dropoff.taxi_zone_key IS NULL THEN 1 ELSE 0 END) AS missing_dropoff_zone_keys,
+  SUM(CASE WHEN w.weather_hour_key IS NULL THEN 1 ELSE 0 END) AS missing_weather_keys,
+  COUNT(*) AS joined_rows,
+  (SELECT COUNT(*) FROM `ftw-week-08`.`03_gold`.fact_green_taxi_trip) AS fact_rows,
+  COUNT(*) - (SELECT COUNT(*) FROM `ftw-week-08`.`03_gold`.fact_green_taxi_trip) AS join_row_difference
+FROM `ftw-week-08`.`03_gold`.fact_green_taxi_trip AS f
+LEFT JOIN `ftw-week-08`.`03_gold`.dim_date AS d_pickup ON f.pickup_date_key = d_pickup.date_key
+LEFT JOIN `ftw-week-08`.`03_gold`.dim_date AS d_dropoff ON f.dropoff_date_key = d_dropoff.date_key
+LEFT JOIN `ftw-week-08`.`03_gold`.dim_time AS t_pickup ON f.pickup_time_key = t_pickup.time_key
+LEFT JOIN `ftw-week-08`.`03_gold`.dim_time AS t_dropoff ON f.dropoff_time_key = t_dropoff.time_key
+LEFT JOIN `ftw-week-08`.`03_gold`.dim_taxi_zone AS z_pickup ON f.pickup_taxi_zone_key = z_pickup.taxi_zone_key
+LEFT JOIN `ftw-week-08`.`03_gold`.dim_taxi_zone AS z_dropoff ON f.dropoff_taxi_zone_key = z_dropoff.taxi_zone_key
+LEFT JOIN `ftw-week-08`.`03_gold`.dim_weather_hour AS w ON f.pickup_weather_hour_key = w.weather_hour_key;
+
+-- 2. Executive Overview
 CREATE OR REPLACE VIEW `ftw-week-08`.`03_gold`.dq_dashboard_overview AS
-WITH fact_summary AS (
+WITH row_status AS (
+  SELECT
+    f.*,
+    ROW_NUMBER() OVER (
+      PARTITION BY f.trip_key
+      ORDER BY f.trip_key
+    ) AS trip_key_row_number,
+    (
+      d_pickup.date_key IS NULL
+      OR d_dropoff.date_key IS NULL
+      OR t_pickup.time_key IS NULL
+      OR t_dropoff.time_key IS NULL
+      OR z_pickup.taxi_zone_key IS NULL
+      OR z_dropoff.taxi_zone_key IS NULL
+      OR w.weather_hour_key IS NULL
+    ) AS has_orphaned_fk
+  FROM `ftw-week-08`.`03_gold`.fact_green_taxi_trip AS f
+  LEFT JOIN `ftw-week-08`.`03_gold`.dim_date AS d_pickup ON f.pickup_date_key = d_pickup.date_key
+  LEFT JOIN `ftw-week-08`.`03_gold`.dim_date AS d_dropoff ON f.dropoff_date_key = d_dropoff.date_key
+  LEFT JOIN `ftw-week-08`.`03_gold`.dim_time AS t_pickup ON f.pickup_time_key = t_pickup.time_key
+  LEFT JOIN `ftw-week-08`.`03_gold`.dim_time AS t_dropoff ON f.dropoff_time_key = t_dropoff.time_key
+  LEFT JOIN `ftw-week-08`.`03_gold`.dim_taxi_zone AS z_pickup ON f.pickup_taxi_zone_key = z_pickup.taxi_zone_key
+  LEFT JOIN `ftw-week-08`.`03_gold`.dim_taxi_zone AS z_dropoff ON f.dropoff_taxi_zone_key = z_dropoff.taxi_zone_key
+  LEFT JOIN `ftw-week-08`.`03_gold`.dim_weather_hour AS w ON f.pickup_weather_hour_key = w.weather_hour_key
+),
+summary AS (
   SELECT
     COUNT(*) AS total_rows,
     COUNT_IF(
@@ -11,54 +58,43 @@ WITH fact_summary AS (
       OR dq_invalid_trip_duration
       OR dq_missing_weather_coverage
       OR trip_key IS NULL
-    ) AS base_flagged_rows,
+      OR trip_key_row_number > 1
+      OR has_orphaned_fk
+    ) AS rows_with_any_dq_flag,
+    COUNT_IF(has_orphaned_fk) AS rows_with_orphaned_fk,
     COUNT_IF(dq_out_of_range_datetime) AS outside_analysis_window_rows,
     COUNT_IF(trip_key IS NULL) AS null_trip_key_count
-  FROM `ftw-week-08`.`03_gold`.fact_green_taxi_trip
-),
-dup_summary AS (
-  SELECT COALESCE(SUM(key_count - 1), 0) AS duplicate_non_null_trip_key_count
-  FROM (
-    SELECT COUNT(*) AS key_count
-    FROM `ftw-week-08`.`03_gold`.fact_green_taxi_trip
-    WHERE trip_key IS NOT NULL
-    GROUP BY trip_key
-    HAVING COUNT(*) > 1
-  )
-),
-ref_integrity AS (
-  SELECT (missing_pickup_date_keys + missing_dropoff_date_keys + missing_pickup_time_keys + 
-          missing_dropoff_time_keys + missing_pickup_zone_keys + missing_dropoff_zone_keys + 
-          missing_weather_keys) AS rows_with_orphaned_fk
-  FROM `ftw-week-08`.`03_gold`.dq_dashboard_referential_integrity
+  FROM row_status
 )
 SELECT
   CURRENT_TIMESTAMP() AS last_checked_at,
-  f.total_rows,
-  LEAST(f.total_rows, f.base_flagged_rows + d.duplicate_non_null_trip_key_count + r.rows_with_orphaned_fk) AS rows_with_any_dq_flag,
-  r.rows_with_orphaned_fk,
-  f.outside_analysis_window_rows,
-  f.total_rows - LEAST(f.total_rows, f.base_flagged_rows + d.duplicate_non_null_trip_key_count + r.rows_with_orphaned_fk) AS clean_rows,
-  CAST(100.0 * (f.total_rows - LEAST(f.total_rows, f.base_flagged_rows + d.duplicate_non_null_trip_key_count + r.rows_with_orphaned_fk)) / NULLIF(f.total_rows, 0) AS DECIMAL(7, 3)) AS clean_row_pct,
-  d.duplicate_non_null_trip_key_count,
-  f.null_trip_key_count
-FROM fact_summary f
-CROSS JOIN dup_summary d
-CROSS JOIN ref_integrity r;
+  total_rows,
+  rows_with_any_dq_flag,
+  rows_with_orphaned_fk,
+  outside_analysis_window_rows,
+  total_rows - rows_with_any_dq_flag AS clean_rows,
+  CAST(
+    100.0 * (total_rows - rows_with_any_dq_flag) / NULLIF(total_rows, 0)
+    AS DECIMAL(7, 3)
+  ) AS clean_row_pct,
+  null_trip_key_count
+FROM summary;
 
--- 2. Check Scores
+-- 3. Check Scores
 CREATE OR REPLACE VIEW `ftw-week-08`.`03_gold`.dq_dashboard_check_scores AS
 WITH aggregated_checks AS (
   SELECT
     COUNT(*) AS total_rows,
-    COUNT_IF(dq_zero_trip_distance) AS zero_dist,
-    COUNT_IF(dq_extreme_trip_distance) AS extreme_dist,
-    COUNT_IF(dq_negative_trip_distance) AS neg_dist,
-    COUNT_IF(dq_invalid_trip_duration) AS invalid_dur,
-    COUNT_IF(dq_missing_weather_coverage) AS missing_weather,
-    COUNT_IF(pickup_taxi_zone_key IN (0, 264, 265) OR pickup_taxi_zone_key IS NULL) AS unmapped_zone,
-    COUNT_IF(trip_key IS NULL) AS null_key
-  FROM `ftw-week-08`.`03_gold`.fact_green_taxi_trip
+    COUNT_IF(f.dq_zero_trip_distance) AS zero_dist,
+    COUNT_IF(f.dq_extreme_trip_distance) AS extreme_dist,
+    COUNT_IF(f.dq_negative_trip_distance) AS neg_dist,
+    COUNT_IF(f.dq_invalid_trip_duration) AS invalid_dur,
+    COUNT_IF(f.dq_missing_weather_coverage) AS missing_weather,
+    COUNT_IF(z.taxi_zone_key IS NULL) AS unmapped_zone,
+    COUNT_IF(f.trip_key IS NULL) AS null_key
+  FROM `ftw-week-08`.`03_gold`.fact_green_taxi_trip AS f
+  LEFT JOIN `ftw-week-08`.`03_gold`.dim_taxi_zone AS z
+    ON f.pickup_taxi_zone_key = z.taxi_zone_key
 ),
 dup_check AS (
   SELECT COALESCE(SUM(key_count - 1), 0) AS dup_key
@@ -66,10 +102,16 @@ dup_check AS (
     SELECT COUNT(*) AS key_count
     FROM `ftw-week-08`.`03_gold`.fact_green_taxi_trip
     WHERE trip_key IS NOT NULL
-    GROUP BY trip_key HAVING COUNT(*) > 1
+    GROUP BY trip_key
+    HAVING COUNT(*) > 1
   )
 )
-SELECT check_name, quality_dimension, flagged_rows, total_rows, ROUND(100.0 * flagged_rows / NULLIF(total_rows, 0), 3) AS flagged_pct
+SELECT
+  check_name,
+  quality_dimension,
+  flagged_rows,
+  total_rows,
+  ROUND(100.0 * flagged_rows / NULLIF(total_rows, 0), 3) AS flagged_pct
 FROM (
   SELECT 'Zero trip distance' AS check_name, 'VALIDITY' AS quality_dimension, zero_dist AS flagged_rows, total_rows FROM aggregated_checks
   UNION ALL SELECT 'Extreme trip distance', 'VALIDITY', extreme_dist, total_rows FROM aggregated_checks
@@ -82,24 +124,25 @@ FROM (
 )
 ORDER BY flagged_rows DESC;
 
--- 3. Dimension Scores
+-- 4. Dimension Scores
 CREATE OR REPLACE VIEW `ftw-week-08`.`03_gold`.dq_dashboard_dimension_scores AS
 WITH fact_summary AS (
   SELECT
     COUNT(*) AS total_rows,
     COUNT_IF(
-      dq_zero_trip_distance
-      OR dq_extreme_trip_distance
-      OR dq_negative_trip_distance
-      OR dq_invalid_trip_duration
+      f.dq_zero_trip_distance
+      OR f.dq_extreme_trip_distance
+      OR f.dq_negative_trip_distance
+      OR f.dq_invalid_trip_duration
     ) AS validity_flagged_rows,
     COUNT_IF(
-      dq_missing_weather_coverage
-      OR pickup_taxi_zone_key IN (0, 264, 265)
-      OR pickup_taxi_zone_key IS NULL
+      f.dq_missing_weather_coverage
+      OR z.taxi_zone_key IS NULL
     ) AS completeness_flagged_rows,
-    COUNT_IF(trip_key IS NULL) AS null_trip_key_rows
-  FROM `ftw-week-08`.`03_gold`.fact_green_taxi_trip
+    COUNT_IF(f.trip_key IS NULL) AS null_trip_key_rows
+  FROM `ftw-week-08`.`03_gold`.fact_green_taxi_trip AS f
+  LEFT JOIN `ftw-week-08`.`03_gold`.dim_taxi_zone AS z
+    ON f.pickup_taxi_zone_key = z.taxi_zone_key
 ),
 duplicate_summary AS (
   SELECT
@@ -146,7 +189,7 @@ SELECT
   checks_in_dimension
 FROM dimension_results;
 
--- 4. Canonical Dimensions Catalog
+-- 5. Canonical Dimensions Catalog
 CREATE OR REPLACE VIEW `ftw-week-08`.`03_gold`.dq_dashboard_canonical_dimensions AS
 WITH dimension_catalog AS (
   SELECT dimension_order, dimension_key, dimension_label
@@ -163,9 +206,12 @@ SELECT
   catalog.dimension_order,
   catalog.dimension_key,
   catalog.dimension_label,
-  COALESCE(scores.flagged_rows, 0) AS flagged_rows,
-  COALESCE(scores.total_rows, (SELECT COUNT(*) FROM `ftw-week-08`.`03_gold`.fact_green_taxi_trip)) AS total_rows,
-  COALESCE(scores.flagged_pct, 0.0) AS flagged_pct,
+  scores.flagged_rows,
+  COALESCE(
+    scores.total_rows,
+    (SELECT COUNT(*) FROM `ftw-week-08`.`03_gold`.fact_green_taxi_trip)
+  ) AS total_rows,
+  scores.flagged_pct,
   COALESCE(scores.checks_in_dimension, 0) AS checks_in_dimension,
   CASE
     WHEN scores.quality_dimension IS NOT NULL
@@ -187,8 +233,20 @@ FROM dimension_catalog AS catalog
 LEFT JOIN `ftw-week-08`.`03_gold`.dq_dashboard_dimension_scores AS scores
   ON catalog.dimension_key = scores.quality_dimension;
 
--- 5. Audit Details
+-- 6. Audit Details
 CREATE OR REPLACE VIEW `ftw-week-08`.`03_gold`.dq_dashboard_problem_areas AS
+WITH audit_rows AS (
+  SELECT
+    f.*,
+    z.taxi_zone_key IS NULL AS dq_unmapped_pickup_zone,
+    f.trip_key IS NULL AS dq_null_trip_key,
+    COUNT(*) OVER (
+      PARTITION BY f.trip_key
+    ) > 1 AND f.trip_key IS NOT NULL AS dq_duplicate_trip_key
+  FROM `ftw-week-08`.`03_gold`.fact_green_taxi_trip AS f
+  LEFT JOIN `ftw-week-08`.`03_gold`.dim_taxi_zone AS z
+    ON f.pickup_taxi_zone_key = z.taxi_zone_key
+)
 SELECT
   trip_key,
   pickup_datetime,
@@ -200,16 +258,22 @@ SELECT
   dq_negative_trip_distance,
   dq_invalid_trip_duration,
   dq_missing_weather_coverage,
+  dq_unmapped_pickup_zone,
+  dq_null_trip_key,
+  dq_duplicate_trip_key,
   source_file,
   batch_id
-FROM `ftw-week-08`.`03_gold`.fact_green_taxi_trip
+FROM audit_rows
 WHERE dq_zero_trip_distance
    OR dq_extreme_trip_distance
    OR dq_negative_trip_distance
    OR dq_invalid_trip_duration
-   OR dq_missing_weather_coverage;
+   OR dq_missing_weather_coverage
+   OR dq_unmapped_pickup_zone
+   OR dq_null_trip_key
+   OR dq_duplicate_trip_key;
 
--- 6. Outside Analysis Window
+-- 7. Outside Analysis Window
 CREATE OR REPLACE VIEW `ftw-week-08`.`03_gold`.dq_dashboard_outside_analysis_window AS
 SELECT
   trip_key,
@@ -219,28 +283,6 @@ SELECT
   batch_id
 FROM `ftw-week-08`.`03_gold`.fact_green_taxi_trip
 WHERE dq_out_of_range_datetime = TRUE;
-
--- 7. Referential Integrity
-CREATE OR REPLACE VIEW `ftw-week-08`.`03_gold`.dq_dashboard_referential_integrity AS
-SELECT
-  SUM(CASE WHEN d_pickup.date_key IS NULL THEN 1 ELSE 0 END) AS missing_pickup_date_keys,
-  SUM(CASE WHEN d_dropoff.date_key IS NULL THEN 1 ELSE 0 END) AS missing_dropoff_date_keys,
-  SUM(CASE WHEN t_pickup.time_key IS NULL THEN 1 ELSE 0 END) AS missing_pickup_time_keys,
-  SUM(CASE WHEN t_dropoff.time_key IS NULL THEN 1 ELSE 0 END) AS missing_dropoff_time_keys,
-  SUM(CASE WHEN z_pickup.taxi_zone_key IS NULL THEN 1 ELSE 0 END) AS missing_pickup_zone_keys,
-  SUM(CASE WHEN z_dropoff.taxi_zone_key IS NULL THEN 1 ELSE 0 END) AS missing_dropoff_zone_keys,
-  SUM(CASE WHEN w.weather_hour_key IS NULL THEN 1 ELSE 0 END) AS missing_weather_keys,
-  COUNT(*) AS joined_rows,
-  (SELECT COUNT(*) FROM `ftw-week-08`.`03_gold`.fact_green_taxi_trip) AS fact_rows,
-  COUNT(*) - (SELECT COUNT(*) FROM `ftw-week-08`.`03_gold`.fact_green_taxi_trip) AS join_row_difference
-FROM `ftw-week-08`.`03_gold`.fact_green_taxi_trip AS f
-LEFT JOIN `ftw-week-08`.`03_gold`.dim_date AS d_pickup ON f.pickup_date_key = d_pickup.date_key
-LEFT JOIN `ftw-week-08`.`03_gold`.dim_date AS d_dropoff ON f.dropoff_date_key = d_dropoff.date_key
-LEFT JOIN `ftw-week-08`.`03_gold`.dim_time AS t_pickup ON f.pickup_time_key = t_pickup.time_key
-LEFT JOIN `ftw-week-08`.`03_gold`.dim_time AS t_dropoff ON f.dropoff_time_key = t_dropoff.time_key
-LEFT JOIN `ftw-week-08`.`03_gold`.dim_taxi_zone AS z_pickup ON f.pickup_taxi_zone_key = z_pickup.taxi_zone_key
-LEFT JOIN `ftw-week-08`.`03_gold`.dim_taxi_zone AS z_dropoff ON f.dropoff_taxi_zone_key = z_dropoff.taxi_zone_key
-LEFT JOIN `ftw-week-08`.`03_gold`.dim_weather_hour AS w ON f.pickup_weather_hour_key = w.weather_hour_key;
 
 -- 8. Row Reconciliation
 CREATE OR REPLACE VIEW `ftw-week-08`.`03_gold`.dq_dashboard_row_reconciliation AS
