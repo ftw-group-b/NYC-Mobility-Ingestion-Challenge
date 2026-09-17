@@ -1,5 +1,8 @@
 # NYC Mobility Ingestion Challenge
 
+[![CI](https://github.com/ftw-group-b/NYC-Mobility-Ingestion-Challenge/actions/workflows/ci.yml/badge.svg)](https://github.com/ftw-group-b/NYC-Mobility-Ingestion-Challenge/actions/workflows/ci.yml)
+[![Databricks deployment](https://github.com/ftw-group-b/NYC-Mobility-Ingestion-Challenge/actions/workflows/deploy-databricks.yml/badge.svg)](https://github.com/ftw-group-b/NYC-Mobility-Ingestion-Challenge/actions/workflows/deploy-databricks.yml)
+
 This repository contains Group B's complete Databricks pipeline for NYC Green Taxi analytics. It incrementally ingests March-May 2026 trip files, combines them with NYC Taxi Zones and hourly Open-Meteo weather, validates every layer, and publishes a Gold star schema for two dashboard outputs:
 
 - Data Quality Dashboard
@@ -43,6 +46,11 @@ See [Data Model](docs/data_model/README.md) for table grains, keys, and the data
 | Open-Meteo historical weather | JSON API response | March-May 2026 hourly labels | Pickup-hour weather context |
 
 Traffic Advisory files were explored and retained outside the completed analytical model. Their date coverage was incomplete for the required period, so they are not part of Bronze, Silver, Gold, or the dashboards.
+
+## Source attribution
+
+- [NYC Taxi and Limousine Commission Trip Record Data](https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page) provides the monthly Green Taxi Parquet files and official Taxi Zone lookup used by this project. TLC notes that trip records are submitted by authorized technology providers and does not independently guarantee every reported value.
+- [Open-Meteo Historical Weather API](https://open-meteo.com/en/docs/historical-weather-api) provides the hourly weather context. Open-Meteo data is made available under the [Creative Commons Attribution 4.0 International license](https://creativecommons.org/licenses/by/4.0/).
 
 ## Repository structure
 

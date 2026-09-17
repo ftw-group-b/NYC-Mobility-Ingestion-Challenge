@@ -1,5 +1,7 @@
 # Data Quality Dashboard
 
+![NYC Mobility Data Quality Dashboard](../../docs/assets/data_quality_dashboard.svg)
+
 The dashboard reads the `dq_dashboard_*` monitoring views and the consolidated `pipeline_quality_gate_summary`.
 
 Recommended pages:

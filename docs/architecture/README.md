@@ -1,5 +1,7 @@
 # Architecture and Pipeline
 
+![Implemented Databricks pipeline](../assets/pipeline_architecture.svg)
+
 ## Design
 
 The project uses the Databricks medallion pattern:

@@ -1,5 +1,7 @@
 # Gold Data Model and Dictionary
 
+![Gold star schema](../assets/star_schema.svg)
+
 ## Model grain
 
 - `fact_green_taxi_trip`: one accepted Silver Green Taxi source record
