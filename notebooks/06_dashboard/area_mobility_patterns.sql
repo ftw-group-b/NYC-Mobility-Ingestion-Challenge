@@ -1,8 +1,8 @@
 -- Databricks notebook source
--- Databricks notebook source
 -- Name: Area Mobility Patterns
 -- Purpose: Compare pickup/drop-off activity, trip characteristics, trip amounts, peak pickup hours, and weather-related pickup patterns across NYC taxi zones.
--- Grain: One row per pickup taxi zone; all metrics are aggregated to this level.
+-- Grain: One row per Taxi Zone with pickup or drop-off activity.
+-- Pickup-specific metrics remain NULL when a zone has no pickups.
 -- Depends on: Gold fact_green_taxi_trip, dim_taxi_zone, dim_time, and dim_weather_hour.
 -- Why: Supports comparison of mobility patterns across NYC taxi zones.
 -- Note: High activity or trip amounts do not automatically indicate profitability, revenue, or underserved areas.
@@ -113,9 +113,12 @@ peak_hour AS (
 )
 
 SELECT
-    z.zone_name,
-    z.borough,
-    z.service_zone,
+    COALESCE(p.taxi_zone_key,
+            d.taxi_zone_key
+            ) AS taxi_zone_key,
+            z.zone_name,
+            z.borough,
+            z.service_zone,
 
     COALESCE(p.pickup_trip_volume, 0) AS pickup_trip_volume,
     COALESCE(d.dropoff_trip_volume, 0) AS dropoff_trip_volume,
@@ -147,10 +150,10 @@ SELECT
 FROM pickup_metrics AS p
 
 FULL OUTER JOIN dropoff_metrics AS d
-    ON p.taxi_zone_key = d.taxi_zone_key
+ON p.taxi_zone_key <=> d.taxi_zone_key
 
 LEFT JOIN peak_hour AS ph
-    ON p.taxi_zone_key = ph.taxi_zone_key
+ON p.taxi_zone_key <=> ph.taxi_zone_key
 
 LEFT JOIN `ftw-week-08`.`03_gold`.dim_taxi_zone AS z
     ON COALESCE(p.taxi_zone_key, d.taxi_zone_key) = z.taxi_zone_key
