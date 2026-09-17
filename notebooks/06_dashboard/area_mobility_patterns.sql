@@ -1,4 +1,5 @@
 -- Databricks notebook source
+-- Databricks notebook source
 -- Name: Area Mobility Patterns
 -- Purpose: Identify zones with strong pickup/drop-off activity, longer trips,
 -- higher fare activity, peak hours, and weather-related demand patterns.
@@ -41,7 +42,7 @@ WITH pickup_metrics AS (
     FROM `ftw-week-08`.`03_gold`.fact_green_taxi_trip AS f
 
     LEFT JOIN `ftw-week-08`.`03_gold`.dim_weather_hour AS w
-        ON f.weather_datetime = w.weather_datetime
+        ON f.pickup_weather_hour_key = w.weather_hour_key
 
     GROUP BY f.pickup_taxi_zone_key
 ),

@@ -1,10 +1,14 @@
 -- Databricks notebook source
+-- Databricks notebook source
 -- Name: Weather and Green Taxi Trip Behavior
 -- Purpose: Compare taxi demand, trip duration, distance, and fares across weather.
 -- Grain: One row per weather condition and weather code.
 -- Depends on: Gold fact_green_taxi_trip and dim_weather_hour.
 -- Why: Shows observed relationships between hourly weather conditions and taxi trips.
 -- Note: This is an association analysis, not evidence that weather caused changes.
+-- Note: weather_code = NULL corresponds to the dim_weather_hour "Unknown" member
+--       (weather_hour_key = 0) for trips with no matched weather observation;
+--       these fall into 'Other / Unknown' below rather than being dropped.
 
 WITH trip_weather AS (
     SELECT
@@ -37,7 +41,7 @@ WITH trip_weather AS (
     FROM `ftw-week-08`.`03_gold`.fact_green_taxi_trip AS f
 
     INNER JOIN `ftw-week-08`.`03_gold`.dim_weather_hour AS w
-        ON f.weather_datetime = w.weather_datetime
+        ON f.pickup_weather_hour_key = w.weather_hour_key
 )
 
 SELECT

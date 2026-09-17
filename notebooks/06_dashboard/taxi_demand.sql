@@ -1,4 +1,5 @@
 -- Databricks notebook source
+-- Databricks notebook source
 -- Name: Taxi Demand by Day, Hour, and Zone
 -- Purpose: Identify when and where Green Taxi demand is highest.
 -- Grain: One row per pickup date, day of week, pickup hour, and pickup taxi zone.
@@ -9,7 +10,7 @@ SELECT
     TO_DATE(f.pickup_datetime) AS pickup_date,
     DATE_FORMAT(f.pickup_datetime, 'EEEE') AS pickup_day_name,
     f.pickup_time_key AS pickup_hour,
-    t.time_label AS pickup_hour_label,
+    t.hour_label AS pickup_hour_label,
 
     z.zone_name AS pickup_zone,
     z.borough AS pickup_borough,
@@ -31,7 +32,7 @@ GROUP BY
     TO_DATE(f.pickup_datetime),
     DATE_FORMAT(f.pickup_datetime, 'EEEE'),
     f.pickup_time_key,
-    t.time_label,
+    t.hour_label,
     z.zone_name,
     z.borough
 
