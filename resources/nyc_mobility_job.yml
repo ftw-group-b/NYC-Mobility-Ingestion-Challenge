@@ -1,12 +1,11 @@
 resources:
   jobs:
     nyc_mobility_pipeline:
-      name: NYC Mobility - Source to Gold
+      name: NYC Mobility - End-to-End Pipeline
       description: >-
-        Runs the approved ingestion, Bronze, Silver, and Gold notebooks in
-        dependency order. Source inspection and analytics queries are excluded
-        because they are documentation/exploration activities rather than
-        operational pipeline steps.
+        Runs the approved incremental ingestion, Bronze, Silver, Gold,
+        business analytics, data-quality monitoring, analytics validation,
+        and consolidated quality gate in dependency order.
 
       max_concurrent_runs: 1
 
@@ -20,25 +19,23 @@ resources:
           depends_on:
             - task_key: ingestion
           notebook_task:
-            notebook_path: ../notebooks/02_bronze/02_bronze_setup.ipynb
+            notebook_path: ../notebooks/02_bronze/01_bronze_setup.ipynb
             source: WORKSPACE
 
         - task_key: bronze_load
           depends_on:
             - task_key: bronze_setup
           notebook_task:
-            notebook_path: ../notebooks/02_bronze/03_bronze_load.ipynb
+            notebook_path: ../notebooks/02_bronze/02_bronze_load.ipynb
             source: WORKSPACE
 
         - task_key: bronze_validation
           depends_on:
             - task_key: bronze_load
           notebook_task:
-            notebook_path: ../notebooks/05_validation/bronze_validation/04_bronze_validation.ipynb
+            notebook_path: ../notebooks/05_validation/01_bronze_validation.ipynb
             source: WORKSPACE
 
-        # The three Silver source transformations can run independently after
-        # Bronze validation succeeds.
         - task_key: silver_green_taxi
           depends_on:
             - task_key: bronze_validation
@@ -64,21 +61,21 @@ resources:
           depends_on:
             - task_key: silver_green_taxi
           notebook_task:
-            notebook_path: ../notebooks/05_validation/silver_validation/01_silver_green_taxi_validation.ipynb
+            notebook_path: ../notebooks/05_validation/02_silver_green_taxi_validation.ipynb
             source: WORKSPACE
 
         - task_key: validate_silver_taxi_zones
           depends_on:
             - task_key: silver_taxi_zones
           notebook_task:
-            notebook_path: ../notebooks/05_validation/silver_validation/02_silver_taxi_zones_validation.ipynb
+            notebook_path: ../notebooks/05_validation/03_silver_taxi_zones_validation.ipynb
             source: WORKSPACE
 
         - task_key: validate_silver_weather
           depends_on:
             - task_key: silver_weather
           notebook_task:
-            notebook_path: ../notebooks/05_validation/silver_validation/03_silver_weather_validation.ipynb
+            notebook_path: ../notebooks/05_validation/04_silver_weather_validation.ipynb
             source: WORKSPACE
 
         - task_key: gold_creation
@@ -87,12 +84,57 @@ resources:
             - task_key: validate_silver_taxi_zones
             - task_key: validate_silver_weather
           notebook_task:
-            notebook_path: ../notebooks/04_gold/04_gold_mart_creation.ipynb
+            notebook_path: ../notebooks/04_gold/01_gold_mart_creation.ipynb
             source: WORKSPACE
 
         - task_key: gold_validation
           depends_on:
             - task_key: gold_creation
           notebook_task:
-            notebook_path: ../notebooks/05_validation/gold_validation/04_gold_mart_validation.ipynb
+            notebook_path: ../notebooks/05_validation/05_gold_mart_validation.ipynb
+            source: WORKSPACE
+
+        - task_key: data_quality_views
+          depends_on:
+            - task_key: gold_validation
+          notebook_task:
+            notebook_path: ../notebooks/08_data_quality/01_data_quality_dashboard_views.sql
+            source: WORKSPACE
+
+        - task_key: analytics_taxi_demand
+          depends_on:
+            - task_key: gold_validation
+          notebook_task:
+            notebook_path: ../notebooks/06_analytics/01_taxi_demand.sql
+            source: WORKSPACE
+
+        - task_key: analytics_weather_behavior
+          depends_on:
+            - task_key: gold_validation
+          notebook_task:
+            notebook_path: ../notebooks/06_analytics/02_weather_behavior.sql
+            source: WORKSPACE
+
+        - task_key: analytics_area_mobility
+          depends_on:
+            - task_key: gold_validation
+          notebook_task:
+            notebook_path: ../notebooks/06_analytics/03_area_mobility_patterns.sql
+            source: WORKSPACE
+
+        - task_key: analytics_validation
+          depends_on:
+            - task_key: analytics_taxi_demand
+            - task_key: analytics_weather_behavior
+            - task_key: analytics_area_mobility
+          notebook_task:
+            notebook_path: ../notebooks/07_analytics_validation/01_analytics_validation.sql
+            source: WORKSPACE
+
+        - task_key: consolidated_quality_gate
+          depends_on:
+            - task_key: data_quality_views
+            - task_key: analytics_validation
+          notebook_task:
+            notebook_path: ../notebooks/09_quality_gate/01_end_to_end_quality_gate.sql
             source: WORKSPACE

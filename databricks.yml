@@ -8,6 +8,7 @@ include:
 sync:
   include:
     - notebooks/**/*.ipynb
+    - notebooks/**/*.sql
 
 targets:
   dev:

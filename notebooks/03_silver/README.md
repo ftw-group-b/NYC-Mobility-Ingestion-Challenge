@@ -1,10 +1,9 @@
-# Silver notebooks
+# Silver
 
-Run these transformation notebooks after Bronze validation:
+The three transformations run independently after Bronze validation:
 
 1. `01_silver_green_taxi.ipynb`
 2. `02_silver_taxi_zones.ipynb`
 3. `03_silver_weather.ipynb`
 
-Their read-only validation notebooks are under
-`notebooks/05_validation/silver_validation/`.
+Silver standardizes types, derives analysis fields, keeps provenance, and adds explicit quality flags. Validation remains separate under `notebooks/05_validation/`.
