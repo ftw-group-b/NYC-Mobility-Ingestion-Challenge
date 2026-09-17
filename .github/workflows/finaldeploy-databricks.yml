@@ -1,0 +1,63 @@
+name: CD - Deploy NYC Mobility to Databricks
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - databricks.yml
+      - resources/**
+      - notebooks/**
+      - .github/workflows/deploy-databricks.yml
+
+  workflow_dispatch:
+    inputs:
+      run_pipeline:
+        description: Run the Source-to-Gold job after deployment
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nyc-mobility-databricks-prod
+  cancel-in-progress: false
+
+env:
+  DATABRICKS_HOST: ${{ vars.DATABRICKS_HOST }}
+  DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+
+jobs:
+  deploy:
+    name: Validate and deploy Databricks bundle
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Check required GitHub configuration
+        shell: bash
+        run: |
+          if [ -z "$DATABRICKS_HOST" ]; then
+            echo "Missing repository variable: DATABRICKS_HOST"
+            exit 1
+          fi
+          if [ -z "$DATABRICKS_TOKEN" ]; then
+            echo "Missing repository secret: DATABRICKS_TOKEN"
+            exit 1
+          fi
+      - name: Install Databricks CLI
+        uses: databricks/setup-cli@main
+
+      - name: Validate bundle
+        run: databricks bundle validate -t prod
+
+      - name: Deploy bundle
+        run: databricks bundle deploy -t prod
+
+      - name: Run Source-to-Gold pipeline
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_pipeline }}
+        run: databricks bundle run -t prod nyc_mobility_pipeline
