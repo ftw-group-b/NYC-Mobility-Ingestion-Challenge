@@ -6,12 +6,6 @@ databricks_cli_version: ">= 0.218.0"
 include:
   - resources/*.yml
 
-# The cluster ID is supplied by GitHub Actions from the repository variable
-# DATABRICKS_CLUSTER_ID. It is intentionally not committed to the repository.
-variables:
-  cluster_id:
-    description: Existing Databricks cluster ID used by every pipeline task.
-
 sync:
   include:
     - notebooks/**/*.ipynb
@@ -25,4 +19,4 @@ targets:
 
   prod:
     workspace:
-      root_path: /Workspace/Shared/.bundle/${bundle.name}/${bundle.target}
+      root_path: /Workspace/Shared/NYC-Mobility-Ingestion-Challenge/.bundle/${bundle.target}

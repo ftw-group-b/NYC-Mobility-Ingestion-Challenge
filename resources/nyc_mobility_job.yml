@@ -12,7 +12,6 @@ resources:
 
       tasks:
         - task_key: ingestion
-          existing_cluster_id: ${var.cluster_id}
           notebook_task:
             notebook_path: ../notebooks/01_ingestion/01_ingestion.ipynb
             source: WORKSPACE
@@ -20,7 +19,6 @@ resources:
         - task_key: bronze_setup
           depends_on:
             - task_key: ingestion
-          existing_cluster_id: ${var.cluster_id}
           notebook_task:
             notebook_path: ../notebooks/02_bronze/02_bronze_setup.ipynb
             source: WORKSPACE
@@ -28,7 +26,6 @@ resources:
         - task_key: bronze_load
           depends_on:
             - task_key: bronze_setup
-          existing_cluster_id: ${var.cluster_id}
           notebook_task:
             notebook_path: ../notebooks/02_bronze/03_bronze_load.ipynb
             source: WORKSPACE
@@ -36,7 +33,6 @@ resources:
         - task_key: bronze_validation
           depends_on:
             - task_key: bronze_load
-          existing_cluster_id: ${var.cluster_id}
           notebook_task:
             notebook_path: ../notebooks/05_validation/bronze_validation/04_bronze_validation.ipynb
             source: WORKSPACE
@@ -46,7 +42,6 @@ resources:
         - task_key: silver_green_taxi
           depends_on:
             - task_key: bronze_validation
-          existing_cluster_id: ${var.cluster_id}
           notebook_task:
             notebook_path: ../notebooks/03_silver/01_silver_green_taxi.ipynb
             source: WORKSPACE
@@ -54,7 +49,6 @@ resources:
         - task_key: silver_taxi_zones
           depends_on:
             - task_key: bronze_validation
-          existing_cluster_id: ${var.cluster_id}
           notebook_task:
             notebook_path: ../notebooks/03_silver/02_silver_taxi_zones.ipynb
             source: WORKSPACE
@@ -62,7 +56,6 @@ resources:
         - task_key: silver_weather
           depends_on:
             - task_key: bronze_validation
-          existing_cluster_id: ${var.cluster_id}
           notebook_task:
             notebook_path: ../notebooks/03_silver/03_silver_weather.ipynb
             source: WORKSPACE
@@ -70,7 +63,6 @@ resources:
         - task_key: validate_silver_green_taxi
           depends_on:
             - task_key: silver_green_taxi
-          existing_cluster_id: ${var.cluster_id}
           notebook_task:
             notebook_path: ../notebooks/05_validation/silver_validation/01_silver_green_taxi_validation.ipynb
             source: WORKSPACE
@@ -78,7 +70,6 @@ resources:
         - task_key: validate_silver_taxi_zones
           depends_on:
             - task_key: silver_taxi_zones
-          existing_cluster_id: ${var.cluster_id}
           notebook_task:
             notebook_path: ../notebooks/05_validation/silver_validation/02_silver_taxi_zones_validation.ipynb
             source: WORKSPACE
@@ -86,7 +77,6 @@ resources:
         - task_key: validate_silver_weather
           depends_on:
             - task_key: silver_weather
-          existing_cluster_id: ${var.cluster_id}
           notebook_task:
             notebook_path: ../notebooks/05_validation/silver_validation/03_silver_weather_validation.ipynb
             source: WORKSPACE
@@ -96,7 +86,6 @@ resources:
             - task_key: validate_silver_green_taxi
             - task_key: validate_silver_taxi_zones
             - task_key: validate_silver_weather
-          existing_cluster_id: ${var.cluster_id}
           notebook_task:
             notebook_path: ../notebooks/04_gold/04_gold_mart_creation.ipynb
             source: WORKSPACE
@@ -104,7 +93,6 @@ resources:
         - task_key: gold_validation
           depends_on:
             - task_key: gold_creation
-          existing_cluster_id: ${var.cluster_id}
           notebook_task:
             notebook_path: ../notebooks/05_validation/gold_validation/04_gold_mart_validation.ipynb
             source: WORKSPACE
