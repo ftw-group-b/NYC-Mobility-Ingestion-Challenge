@@ -1,6 +1,6 @@
 # Business-Ready Analytics Dashboard
 
-The dashboard reads three Gold views created under `notebooks/06_analytics/`:
+The dashboard reads three Gold views created under `notebooks/05_analytics/`:
 
 - `analytics_taxi_demand`
 - `analytics_weather_behavior`
@@ -14,4 +14,4 @@ Recommended pages:
 
 All queries filter `dq_out_of_range_datetime = FALSE` for the March-May assignment window. Weather results describe association, not causation.
 
-The separate checks in `notebooks/07_analytics_validation/` reconcile dashboard trip volumes and verify each view's declared grain.
+The separate checks in `tests/analytics/` reconcile dashboard trip volumes and verify each view's declared grain.

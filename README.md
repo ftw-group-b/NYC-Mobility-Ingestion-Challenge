@@ -54,22 +54,26 @@ Traffic Advisory files were explored and retained outside the completed analytic
 │   ├── 02_bronze/
 │   ├── 03_silver/
 │   ├── 04_gold/
-│   ├── 05_validation/
-│   ├── 06_analytics/
-│   ├── 07_analytics_validation/
-│   ├── 08_data_quality/
-│   └── 09_quality_gate/
+│   ├── 05_analytics/
+│   └── 06_dashboard/
+├── src/
+│   ├── 01_ingestion/
+│   ├── 02_bronze/
+│   ├── 03_silver/
+│   ├── 04_gold/
+│   ├── 05_analytics/
+│   └── 06_data_quality/
 ├── dashboard/
 │   ├── business_analytics/
 │   └── data_quality/
 ├── docs/
 ├── resources/
-├── tests/
+├── tests/                 # executable validation grouped by layer
 ├── databricks.yml
 └── .github/workflows/
 ```
 
-Each approved artifact appears once. Numbered folders show execution order; file names use lowercase `snake_case`.
+`notebooks/` contains the compiled, documented Databricks workflow. `src/` contains source-specific ingestion modules and one modular SQL file per table or view. `tests/` contains layer-specific and end-to-end validation. Numbered folders show execution order; file names use lowercase `snake_case`.
 
 ## Data quality framework
 

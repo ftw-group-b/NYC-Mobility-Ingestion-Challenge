@@ -11,6 +11,12 @@ The project uses the Databricks medallion pattern:
 - **Analytics** publishes dashboard-ready views from Gold.
 - **Validation** checks every layer and ends with one consolidated PASS/FAIL gate.
 
+## Code organization
+
+- `notebooks/` contains the compiled Databricks workflow from ingestion through dashboard-view creation.
+- `src/` contains modular source acquisition and one table/view query per file.
+- `tests/` contains executable validation grouped by Bronze, Silver, Gold, Analytics, and end-to-end scope.
+
 ## Databricks task flow
 
 ```text

@@ -18,10 +18,10 @@ The final validation is complete when the deployed Databricks job finishes with 
 
 | Evidence | Location |
 |---|---|
-| Layer-specific SQL results | `notebooks/05_validation/` |
-| Analytics validation | `notebooks/07_analytics_validation/` |
-| Consolidated PASS/FAIL | `notebooks/09_quality_gate/` |
-| Dashboard monitoring views | `notebooks/08_data_quality/` |
+| Layer-specific validation | `tests/bronze/`, `tests/silver/`, and `tests/gold/` |
+| Analytics validation | `tests/analytics/` |
+| Consolidated PASS/FAIL | `tests/end_to_end/` |
+| Dashboard monitoring views | `notebooks/06_dashboard/` |
 | CI structure checks | `.github/workflows/ci.yml` |
 | Bundle deployment | `.github/workflows/deploy-databricks.yml` |
 

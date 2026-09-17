@@ -1,33 +1,42 @@
 # Repository Structure
 
-The repository has one canonical location for each responsibility:
+The repository has three clear code areas.
+
+## `notebooks/` — compiled workflow
+
+These are the documented, runnable Databricks assets used by the job:
 
 | Folder | Responsibility |
 |---|---|
-| `notebooks/00_source_inspection` | Raw-source profiling |
-| `notebooks/01_ingestion` | Incremental source acquisition |
-| `notebooks/02_bronze` | Raw Delta setup and loading |
-| `notebooks/03_silver` | Typed, standardized source tables |
-| `notebooks/04_gold` | Star-schema creation only |
-| `notebooks/05_validation` | Bronze, Silver, and Gold validation |
-| `notebooks/06_analytics` | Business-question views only |
-| `notebooks/07_analytics_validation` | Independent analytics checks |
-| `notebooks/08_data_quality` | Data Quality Dashboard views |
-| `notebooks/09_quality_gate` | Consolidated end-to-end PASS/FAIL |
-| `dashboard` | Dashboard purpose and page guidance |
-| `docs` | Architecture, model, quality, and decisions |
-| `resources` | Databricks job definition |
-| `tests` | Human-readable validation map |
+| `00_source_inspection` | Raw-source profiling |
+| `01_ingestion` | Incremental source acquisition |
+| `02_bronze` | Compiled Bronze setup and loads |
+| `03_silver` | Compiled Silver transformations |
+| `04_gold` | Compiled star-schema creation |
+| `05_analytics` | Compiled business-question views |
+| `06_dashboard` | Compiled Data Quality Dashboard views |
+
+## `src/` — modular table queries
+
+This is the modular source library. Ingestion is split by external source, while Bronze, Silver, Gold, Analytics, and Data Quality are split into one table or view per SQL file. It is easier to review one source or table here than inside a full layer notebook.
+
+## `tests/` — validation by layer
+
+Executable checks are grouped into:
+
+- `bronze/`
+- `silver/`
+- `gold/`
+- `analytics/`
+- `end_to_end/`
+
+The final end-to-end test publishes the consolidated quality result and fails the Databricks task when a critical condition returns `FAIL`.
 
 ## Naming standard
 
-- execution folders and files use a two-digit numeric prefix;
+- ordered execution folders and files use a two-digit numeric prefix; shared helpers use descriptive names;
 - implementation names use lowercase `snake_case`;
-- each executable asset appears once; and
+- table and view names match their Gold or Silver objects; and
 - `README.md` is the only intentional uppercase filename.
 
-## Cleanup applied
-
-The active implementation was consolidated under `notebooks/`. Duplicate numbered/un-numbered notebooks, duplicate hyphen/underscore test documents, the mixed `06_dashboard` folder, and the legacy placeholder `src/` tree are excluded from this clean delivery. Analytics, Analytics Validation, Data Quality, and the consolidated Quality Gate now have separate folders and job stages.
-
-Upload the contents of the clean repository root as one unit. Replacing the old tree prevents retired duplicates from remaining beside the canonical files.
+Duplicate numbered/un-numbered notebooks, duplicate test documents, and retired placeholder code are excluded from the clean delivery.
