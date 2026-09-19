@@ -57,7 +57,7 @@ SELECT
     CASE
         WHEN g.trip_distance > 0
         THEN g.total_amount / g.trip_distance
-    END AS total_amount_per_mile,
+    END AS total_amount_per_mile, --new
 
     g.fare_amount,
     g.extra,
