@@ -1,6 +1,7 @@
 # Documentation Assets
 
 - `pipeline_architecture.svg`: implemented Databricks task flow
+- `pipeline_architecture_group_b.svg`: Group B architecture diagram, preserving the supplied PNG exactly
 - `star_schema.svg`: implemented Gold fact and dimensions
 - `data_quality_dashboard.svg`: completed Data Quality Dashboard
 - `business_analytics_dashboard/01_overview_and_kpis.svg`: business overview and KPIs

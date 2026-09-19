@@ -12,7 +12,13 @@ The implementation uses Databricks notebooks, Delta tables, SQL views, Databrick
 
 ## Architecture
 
-![NYC Mobility pipeline](docs/assets/pipeline_architecture.svg)
+### Databricks job pipeline
+
+![Databricks job pipeline](docs/assets/pipeline_architecture.svg)
+
+### Group B architecture overview
+
+![Group B architecture and pipeline](docs/assets/pipeline_architecture_group_b.svg)
 
 The deployed job follows this order:
 

@@ -1,6 +1,12 @@
 # Architecture and Pipeline
 
+## Databricks job pipeline
+
 ![Implemented Databricks pipeline](../assets/pipeline_architecture.svg)
+
+## Group B architecture overview
+
+![Group B architecture and pipeline](../assets/pipeline_architecture_group_b.svg)
 
 ## Design
 
