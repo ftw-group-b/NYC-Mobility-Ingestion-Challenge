@@ -17,6 +17,7 @@ targets:
     default: true
     mode: development
     workspace:
+      host: https://dbc-726a6b36-d03f.cloud.databricks.com/browse/folders/workspace?o=7474643791105769
       root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}
 
   prod:
