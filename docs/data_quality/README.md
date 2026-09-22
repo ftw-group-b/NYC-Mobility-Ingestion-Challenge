@@ -73,3 +73,19 @@ The Data Quality Dashboard uses:
 - `dq_dashboard_row_reconciliation`
 - `dq_dashboard_zone_hotspots`
 - `pipeline_quality_gate_summary`
+
+
+## Great Expectations documentation
+
+The implementation-ready GX design and handoff procedure are documented in the [Great Expectations Runbook](great_expectations_runbook.md).
+
+The runbook covers:
+
+- the GitHub CI workflow
+- the Databricks CD workflow
+- the end-to-end pipeline flow
+- the proposed GX quality-gate position
+- failure conditions and triage
+- ownership boundaries between documentation and implementation
+
+GX execution is intentionally documented as a planned integration until the assigned implementation owner adds the GX notebook, suites, Checkpoint, and Databricks job task.
