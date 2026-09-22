@@ -61,6 +61,64 @@ jobs:
 
           echo "PASS: README.md exists and is not empty"
 
+      - name: Check Great Expectations runbook
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          runbook="docs/data_quality/great_expectations_runbook.md"
+
+          if [[ ! -s "$runbook" ]]; then
+            echo "ERROR: Missing or empty Great Expectations runbook: $runbook"
+            exit 1
+          fi
+
+          required_sections=(
+            "Databricks"
+            "Expectation Suite"
+            "Validation Definition"
+            "CI/CD"
+            "Definition of done"
+          )
+
+          for section in "${required_sections[@]}"; do
+            if ! grep -Fq "$section" "$runbook"; then
+              echo "ERROR: Runbook is missing required topic: $section"
+              exit 1
+            fi
+          done
+
+          echo "PASS: Great Expectations runbook is present and contains required topics"
+
+      - name: Validate GX assets when present
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          gx_paths=()
+
+          if [[ -d "gx" ]]; then
+            gx_paths+=("gx")
+          fi
+
+          if [[ -d "tests/data_quality" ]]; then
+            gx_paths+=("tests/data_quality")
+          fi
+
+          if [[ "${#gx_paths[@]}" -eq 0 ]]; then
+            echo "INFO: No GX implementation assets committed yet"
+            exit 0
+          fi
+
+          while IFS= read -r -d '' file; do
+            if [[ ! -s "$file" ]]; then
+              echo "ERROR: Empty GX asset: $file"
+              exit 1
+            fi
+          done < <(find "${gx_paths[@]}" -type f \( -name "*.py" -o -name "*.yml" -o -name "*.yaml" -o -name "*.json" -o -name "*.ipynb" \) -print0)
+
+          echo "PASS: GX implementation assets are non-empty"
+
       - name: Validate SQL files when present
         shell: bash
         run: |
@@ -88,7 +146,7 @@ jobs:
           set -euo pipefail
 
           mapfile -t python_files < <(
-            find src notebooks -type f -name "*.py" | sort
+            find src notebooks tests -type f -name "*.py" | sort
           )
 
           if [[ "${#python_files[@]}" -eq 0 ]]; then
