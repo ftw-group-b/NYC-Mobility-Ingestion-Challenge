@@ -140,6 +140,7 @@ The production bundle deploys under `/Workspace/Shared/NYC-Mobility-Ingestion-Ch
 - [Architecture](docs/architecture/README.md)
 - [Data Model and Dictionary](docs/data_model/README.md)
 - [Data Quality](docs/data_quality/README.md)
+- [Great Expectations Runbook](docs/data_quality/great_expectations_runbook.md)
 - [Engineering Decisions](docs/decisions/README.md)
 - [Final Validation](docs/validation/README.md)
 - [Repository Structure](docs/repository_structure/README.md)
