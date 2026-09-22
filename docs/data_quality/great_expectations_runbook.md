@@ -527,6 +527,53 @@ Great Expectations is considered integrated when:
 - a pull request documents the new task, suites, and failure-handling behavior
 - at least one successful run and one intentionally failing test are recorded as evidence
 
+
+## Checklist coverage for the assigned documentation task
+
+This section records how the assigned documentation checklist is addressed. The checklist is a documentation deliverable; actual GX execution remains the responsibility of the implementation owner.
+
+| Checklist item | Documentation evidence | Status |
+|---|---|---|
+| Review existing README and documentation | Current project context, workflow alignment, repository documentation map, and links to the existing data-quality and validation documents | Addressed |
+| Document the CI workflow | CI triggers, project checks, GX runbook validation, future GX asset checks, Python validation, and raw Parquet protection | Addressed |
+| Document the CD workflow | Databricks deployment prerequisites, Asset Bundle commands, deployment path triggers, and optional pipeline execution | Addressed |
+| Document the end-to-end pipeline flow | Ingestion → Bronze → validations → Silver → Gold → analytics → consolidated quality gate, including the proposed GX insertion point | Addressed |
+| Document the Great Expectations quality gate | GX components, Expectations, Validation Definitions, Checkpoint behavior, PASS/FAIL handling, and handoff requirements | Addressed |
+| Document what causes the pipeline to fail | GX failures, assertion failures, schema drift, source-data issues, transformation defects, missing credentials, and failed reconciliation checks | Addressed |
+| Update relevant diagrams or workflow documentation | Updated workflow documentation with the GitHub-to-Databricks flow and GX quality-gate diagram; existing architecture assets remain linked | Addressed |
+
+### GitHub-to-Databricks operating flow
+
+```mermaid
+flowchart TD
+    A[Developer change] --> B[Pull request]
+    B --> C[GitHub CI checks]
+    C --> D[Review and merge to main]
+    D --> E[Databricks CD bundle validation]
+    E --> F[Bundle deployment]
+    F --> G[End-to-end Databricks job]
+    G --> H[GX quality gate]
+    H -->|PASS| I[Analytics and dashboards]
+    H -->|FAIL| J[Stop and triage]
+```
+
+The diagram describes the intended operating model. Until the GX implementation PR is merged, the GX node is a documented handoff point rather than an active production task.
+
+### Failure conditions covered by this documentation
+
+The pipeline may fail because of:
+
+- invalid or incomplete source data
+- missing or incomplete Bronze provenance
+- invalid Silver types, codes, timestamps, or measures
+- Gold schema, key, grain, foreign-key, or reconciliation failures
+- a failed GX Expectation or Checkpoint
+- missing `DATABRICKS_HOST` or `DATABRICKS_TOKEN` configuration
+- invalid Databricks Bundle configuration
+- Python syntax or empty SQL/GX assets detected by CI
+- a failed consolidated end-to-end quality gate
+
+Each failure must be investigated using the affected task logs, batch/run identifiers, existing validation evidence, and the failure-triage procedure in this runbook.
 ## References
 
 - [GX Core overview](https://docs.greatexpectations.io/docs/core/introduction/gx_overview/)
