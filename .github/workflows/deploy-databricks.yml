@@ -8,6 +8,10 @@ on:
       - databricks.yml
       - resources/**
       - notebooks/**
+      - tests/**
+      - gx/**
+      - requirements*.txt
+      - pyproject.toml
       - .github/workflows/deploy-databricks.yml
 
   workflow_dispatch:
@@ -49,6 +53,7 @@ jobs:
             echo "Missing repository secret: DATABRICKS_TOKEN"
             exit 1
           fi
+
       - name: Install Databricks CLI
         uses: databricks/setup-cli@main
 
