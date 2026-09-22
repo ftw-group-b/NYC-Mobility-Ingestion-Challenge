@@ -33,6 +33,56 @@ The repository currently uses:
 
 GX should be added as an additional validation layer, not as a replacement for the existing quality framework.
 
+## Assigned Senior Data Engineer deliverable
+
+### Responsibility
+
+The documentation owner is responsible for translating the Great Expectations assignment into an implementation-ready engineering contract for the team. This responsibility covers design, workflow alignment, operational guidance, and handoff—not the implementation of the GX code unless separately assigned.
+
+### Documentation deliverables
+
+This runbook addresses the documentation scope by defining:
+
+- the role of GX in the existing Bronze → Silver → Gold architecture
+- the approved first implementation scope and validation priorities
+- the relationship between GX, existing Spark/SQL checks, and the consolidated quality gate
+- the Databricks setup and execution sequence
+- the expected CI/CD touchpoints
+- the ownership boundary between documentation and implementation
+- failure handling, auditability, and Definition of Done
+- the handoff information required by the GX integration owner
+
+### Current workflow alignment
+
+The proposed GX flow is aligned with the repository's current implementation:
+
+| Existing project component | Documentation decision |
+|---|---|
+| `tests/bronze`, `tests/silver`, and `tests/gold` | Continue to own layer-specific Spark/notebook validation |
+| `tests/end_to_end/01_end_to_end_quality_gate.ipynb` | Remains the consolidated final quality gate |
+| `resources/nyc_mobility_job.yml` | Receives the GX task only during the implementation phase |
+| `.github/workflows/ci.yml` | Validates documentation and future GX assets |
+| `.github/workflows/deploy-databricks.yml` | Includes future GX-related deployment paths |
+| `docs/data_quality` | Stores the approved GX design and operating procedure |
+
+### Implementation handoff
+
+The assigned GX implementation owner will use this runbook to create and validate:
+
+1. the pinned GX dependency
+2. the GX notebook or Python module
+3. the Expectation Suites
+4. the Validation Definitions and Checkpoint
+5. the Delta audit-result output
+6. the Databricks job dependency
+7. the successful and intentionally failing validation evidence
+
+The documentation task is complete when the next engineer can implement these items without needing to rediscover the project architecture or the agreed quality rules.
+
+### Scope boundary
+
+This document is an implementation-ready design and operating guide. It must not claim that GX is already running in Databricks until the implementation owner provides execution evidence. After implementation, this runbook should be updated with the final notebook path, pinned version, actual suite names, job task key, audit table name, and validation evidence.
+
 ## GX terminology used in this project
 
 | GX component | Project interpretation |
