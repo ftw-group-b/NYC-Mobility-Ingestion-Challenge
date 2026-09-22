@@ -532,16 +532,6 @@ Great Expectations is considered integrated when:
 
 This section records how the assigned documentation checklist is addressed. The checklist is a documentation deliverable; actual GX execution remains the responsibility of the implementation owner.
 
-| Checklist item | Documentation evidence | Status |
-|---|---|---|
-| Review existing README and documentation | Current project context, workflow alignment, repository documentation map, and links to the existing data-quality and validation documents | Addressed |
-| Document the CI workflow | CI triggers, project checks, GX runbook validation, future GX asset checks, Python validation, and raw Parquet protection | Addressed |
-| Document the CD workflow | Databricks deployment prerequisites, Asset Bundle commands, deployment path triggers, and optional pipeline execution | Addressed |
-| Document the end-to-end pipeline flow | Ingestion → Bronze → validations → Silver → Gold → analytics → consolidated quality gate, including the proposed GX insertion point | Addressed |
-| Document the Great Expectations quality gate | GX components, Expectations, Validation Definitions, Checkpoint behavior, PASS/FAIL handling, and handoff requirements | Addressed |
-| Document what causes the pipeline to fail | GX failures, assertion failures, schema drift, source-data issues, transformation defects, missing credentials, and failed reconciliation checks | Addressed |
-| Update relevant diagrams or workflow documentation | Updated workflow documentation with the GitHub-to-Databricks flow and GX quality-gate diagram; existing architecture assets remain linked | Addressed |
-
 ### GitHub-to-Databricks operating flow
 
 ```mermaid
