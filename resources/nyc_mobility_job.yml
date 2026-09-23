@@ -122,6 +122,11 @@ resources:
           notebook_task:
             notebook_path: ../tests/end_to_end/02_great_expectations_quality_gate.ipynb
             source: WORKSPACE
-          libraries:
-            - pypi:
-                package: great_expectations==1.23.1
+          environment_key: gx_environment
+
+      environments:
+        - environment_key: gx_environment
+          spec:
+            environment_version: "2"
+            dependencies:
+              - great_expectations==1.23.1
