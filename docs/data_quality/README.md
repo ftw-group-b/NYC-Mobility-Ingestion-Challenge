@@ -57,7 +57,7 @@ Analytics validation checks that each dashboard view:
 
 ## Consolidated quality gate
 
-`tests/end_to_end/01_end_to_end_quality_gate.ipynb` combines the critical Bronze, Silver, Gold, dashboard, and analytics checks into one PASS/FAIL result. The final `assert_true` statement stops the job if any critical check fails.
+`tests/end_to_end/02_great_expectations_quality_gate.ipynb` combines the critical Bronze, Silver, Gold, dashboard, and analytics checks into 14 governed PASS/FAIL results. It publishes the detailed results and summary for the dashboard. Great Expectations then verifies the complete result set, required fields, unique check names, and `PASS` statuses; a failed expectation stops the job.
 
 ## Dashboard outputs
 
