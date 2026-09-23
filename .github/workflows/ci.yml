@@ -66,7 +66,9 @@ jobs:
         run: |
           set -euo pipefail
 
-          mapfile -t sql_files < <(find src tests -type f -name "*.sql" | sort)
+          mapfile -t sql_files < <(
+            find src tests -type f -name "*.sql" | sort
+          )
 
           if [[ "${#sql_files[@]}" -eq 0 ]]; then
             echo "INFO: No SQL files committed yet"
@@ -99,6 +101,65 @@ jobs:
           python -m py_compile "${python_files[@]}"
 
           echo "PASS: Python syntax validation completed"
+
+      - name: Validate Databricks notebooks when present
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mapfile -t notebook_files < <(
+            find notebooks tests -type f -name "*.ipynb" | sort
+          )
+
+          if [[ "${#notebook_files[@]}" -eq 0 ]]; then
+            echo "INFO: No Databricks notebooks committed"
+            exit 0
+          fi
+
+          python - <<'PY'
+          import json
+          import pathlib
+          import sys
+
+          notebooks = [
+              *pathlib.Path("notebooks").rglob("*.ipynb"),
+              *pathlib.Path("tests").rglob("*.ipynb"),
+          ]
+
+          failed = False
+
+          for path in sorted(notebooks):
+              try:
+                  with path.open(encoding="utf-8") as f:
+                      notebook = json.load(f)
+
+                  required_fields = {
+                      "cells",
+                      "metadata",
+                      "nbformat",
+                      "nbformat_minor",
+                  }
+
+                  missing = required_fields - notebook.keys()
+
+                  if missing:
+                      print(
+                          f"ERROR: {path} is missing: "
+                          f"{', '.join(sorted(missing))}"
+                      )
+                      failed = True
+                  else:
+                      print(f"PASS: {path}")
+
+              except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+                  print(f"ERROR: Invalid notebook {path}: {exc}")
+                  failed = True
+
+          if failed:
+              sys.exit(1)
+          PY
+
+          echo "PASS: Databricks notebook validation completed"
 
       - name: Prevent raw Parquet files from entering Git
         shell: bash

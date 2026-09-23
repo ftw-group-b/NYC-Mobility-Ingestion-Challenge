@@ -120,5 +120,8 @@ resources:
             - task_key: data_quality_views
             - task_key: analytics_validation
           notebook_task:
-            notebook_path: ../tests/end_to_end/01_end_to_end_quality_gate.ipynb
+            notebook_path: ../tests/end_to_end/02_great_expectations_quality_gate.ipynb
             source: WORKSPACE
+          libraries:
+            - pypi:
+                package: great_expectations==1.23.1
