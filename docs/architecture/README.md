@@ -51,13 +51,13 @@ The three Silver branches run independently after Bronze validation. Gold begins
 
 ## Incremental and idempotent behavior
 
-Green Taxi is loaded month by month. A source file is inserted only when its stable source identifier is absent from the ingestion log. The same guard is used for Taxi Zones and Weather. This allows April and May to be added without rebuilding March and prevents the same file from being loaded twice.
+Green Taxi is loaded month by month. Raw landing follows a first-write-wins rule: an existing deterministic file is verified against its metadata sidecar and returned as `IDEMPOTENT_SKIP` without another download or overwrite. Bronze inserts a source file only when its stable identifier is not already present. The same guards are used for Taxi Zones and Weather, allowing safe reruns without duplicate files or rows. A deliberate source revision must use a new versioned filename.
 
 Silver and Gold use deterministic full-refresh builds at the current course scale. Re-running them recreates the same business rows from the accepted upstream data. Audit timestamps are excluded from logical idempotency comparisons.
 
 ## Failure behavior
 
-Validation tasks are placed directly after the layer they protect. The final quality-gate notebook consolidates critical checks and calls `assert_true`; any FAIL result stops the Databricks job before the delivery is treated as healthy.
+Validation tasks are placed directly after the layer they protect. The final Great Expectations notebook consolidates the governed checks and raises an exception when an expectation fails, stopping the Databricks job before the delivery is treated as healthy.
 
 ## Dashboards
 
