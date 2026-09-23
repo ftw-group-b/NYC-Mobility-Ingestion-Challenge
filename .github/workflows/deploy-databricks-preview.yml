@@ -1,0 +1,61 @@
+name: Deploy PR Preview to Databricks
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - databricks.yml
+      - resources/**
+      - notebooks/**
+      - src/**
+      - tests/**
+      - .github/workflows/deploy-databricks-preview.yml
+
+permissions:
+  contents: read
+  deployments: write
+
+concurrency:
+  group: databricks-preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  DATABRICKS_HOST: ${{ vars.DATABRICKS_HOST }}
+  DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+
+jobs:
+  deploy-preview:
+    name: Deploy PR to Databricks development
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+
+    environment:
+      name: development
+      url: ${{ vars.DATABRICKS_HOST }}
+
+    steps:
+      - name: Check out PR branch
+        uses: actions/checkout@v4
+
+      - name: Check required configuration
+        shell: bash
+        run: |
+          if [ -z "$DATABRICKS_HOST" ]; then
+            echo "Missing repository variable: DATABRICKS_HOST"
+            exit 1
+          fi
+
+          if [ -z "$DATABRICKS_TOKEN" ]; then
+            echo "Missing repository secret: DATABRICKS_TOKEN"
+            exit 1
+          fi
+
+      - name: Install Databricks CLI
+        uses: databricks/setup-cli@main
+
+      - name: Validate development bundle
+        run: databricks bundle validate -t dev
+
+      - name: Deploy development bundle
+        run: databricks bundle deploy -t dev
