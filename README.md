@@ -8,7 +8,7 @@ This repository contains Group B's complete Databricks pipeline for NYC Green Ta
 - Data Quality Dashboard
 - Business-Ready Analytics Dashboard
 
-The implementation uses Databricks notebooks, Delta tables, SQL views, Databricks Asset Bundles, and GitHub Actions. It does not use dbt.
+The implementation uses Databricks notebooks, Delta tables, SQL views, Databricks Asset Bundles, Great Expectations, and GitHub Actions. It does not use dbt.
 
 ## Architecture
 
@@ -31,7 +31,7 @@ The deployed job follows this order:
 7. Gold validation
 8. Data-quality views and business analytics views
 9. Analytics validation
-10. Consolidated end-to-end quality gate
+10. Great Expectations consolidated end-to-end quality gate
 
 See [Architecture](docs/architecture/README.md) for the task-level design.
 
@@ -118,6 +118,8 @@ These views support association and descriptive analysis. They do not claim that
 ## Deployment
 
 The Databricks Asset Bundle is defined in `databricks.yml` and `resources/nyc_mobility_job.yml`.
+
+CI validates the required project structure, non-empty SQL files, Python files, notebook JSON, Python notebook-cell syntax, and the rule that raw Parquet files must not be committed. Pull requests that change deployable assets are validated and deployed to the `development` environment for preview. After an approved PR is merged to `main`, the production workflow validates and deploys the bundle; running the source-to-Gold pipeline remains an explicit manual option.
 
 GitHub configuration:
 
