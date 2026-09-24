@@ -67,7 +67,7 @@ The three Silver branches run independently after Bronze validation. Gold begins
 
 ## Incremental and idempotent behavior
 
-Green Taxi is loaded month by month. Raw landing follows a first-write-wins rule: an existing deterministic file is verified against its metadata sidecar and returned as `IDEMPOTENT_SKIP` without another download or overwrite. Bronze inserts a source file only when its stable identifier is not already present. The same guards are used for Taxi Zones and Weather, allowing safe reruns without duplicate files or rows. A deliberate source revision must use a new versioned filename.
+Green Taxi is loaded month by month. Raw landing follows a first-write-wins rule: an existing deterministic file is verified against its trusted metadata sidecar and returned as `IDEMPOTENT_SKIP` without another download or overwrite. A missing or mismatched sidecar fails closed instead of being reconstructed automatically. New downloads use bounded retry/backoff for temporary HTTP failures and same-directory temporary files before commit. Bronze inserts a source file only when its stable identifier is not already present. The same guards are used for Taxi Zones and Weather, allowing safe reruns without duplicate files or rows. A deliberate source revision must use a new versioned filename.
 
 Silver and Gold use deterministic full-refresh builds at the current course scale. Re-running them recreates the same business rows from the accepted upstream data. Audit timestamps are excluded from logical idempotency comparisons.
 
@@ -92,3 +92,15 @@ After both changes were merged, CI, deployment, and the manual source-to-Gold pi
 - The **Business-Ready Analytics Dashboard** reads the `analytics_*` views.
 
 Dashboard SQL is separated from the Gold build so business questions do not change the dimensional model.
+
+## Operations and environment boundary
+
+The job allows one run at a time, has explicit run/task timeouts, and retries
+only rerun-safe ingestion and Bronze-load tasks. See the
+[operations runbook](../operations/RUNBOOK.md) for monitoring and recovery.
+
+Development and production bundles use separate workspace roots. The current
+course notebooks still share a fixed Unity Catalog and landing Volume, so a
+preview job must not be run as an isolated data environment. The exact boundary
+and the safe parameterization follow-up are documented in
+[environment configuration](../operations/CONFIGURATION.md).

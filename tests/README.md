@@ -13,7 +13,8 @@ Validation is separated from creation and grouped by pipeline layer.
 | End to end | `end_to_end/02_great_expectations_quality_gate.ipynb` |
 | Local unit and mirror alignment | `unit/test_*.py` |
 
-The active consolidated gate calculates and publishes 14 governed checks, then uses Great Expectations to verify that the complete check set is present and every status is `PASS`. A failed expectation stops the Databricks task. The earlier SQL-only `01_end_to_end_quality_gate.ipynb` is retained as a legacy reference and is not scheduled by the deployed job.
+The active consolidated gate calculates and publishes 14 governed checks, then uses Great Expectations to verify that the complete check set is present and every status is `PASS`. A failed expectation stops the Databricks task. The earlier SQL-only gate is archived under `docs/archive/` and is not executable or deployed.
 
-The local unit tests verify first-write-wins ingestion without network access and
-enforce the key rerun contracts shared by `src/` and the compiled notebooks.
+The local unit tests verify first-write-wins ingestion, trusted-sidecar failure,
+transient HTTP retry behavior, and source/notebook alignment without using the
+network. CI executes these tests on every pull request.

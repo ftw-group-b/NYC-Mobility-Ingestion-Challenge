@@ -42,6 +42,7 @@
 | `trip_distance` | DOUBLE | Reported trip distance in miles |
 | `trip_duration_minutes` | DOUBLE | Derived nonnegative duration in minutes |
 | `trip_average_speed_mph` | DOUBLE | Distance divided by valid positive duration |
+| `total_amount_per_mile` | DOUBLE | Total amount divided by positive trip distance |
 | `fare_amount` | DOUBLE | Metered fare |
 | `extra` | DOUBLE | TLC extra charges |
 | `mta_tax` | DOUBLE | MTA tax |

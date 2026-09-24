@@ -1,6 +1,6 @@
 bundle:
   name: nyc-mobility-ingestion-challenge
-  databricks_cli_version: ">= 0.218.0"
+  databricks_cli_version: ">= 1.10.0"
 
 include:
   - resources/*.yml
@@ -20,5 +20,6 @@ targets:
       root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}
 
   prod:
+    mode: production
     workspace:
       root_path: /Workspace/Shared/NYC-Mobility-Ingestion-Challenge/.bundle/${bundle.target}

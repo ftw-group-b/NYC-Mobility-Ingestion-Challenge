@@ -7,6 +7,8 @@
 
 The compiled Databricks notebook is `notebooks/01_ingestion/01_ingestion.ipynb`.
 
-On a rerun, `common.py` validates an existing raw file against its SHA-256
-metadata sidecar and returns `IDEMPOTENT_SKIP` without making another network
-request. A deliberate source revision must use a new versioned filename.
+On a rerun, `common.py` validates an existing raw file against its trusted
+SHA-256 metadata sidecar and returns `IDEMPOTENT_SKIP` without making another
+network request. Missing or mismatched metadata fails closed. New downloads use
+bounded retry/backoff and temporary files before the raw file and sidecar are
+committed. A deliberate source revision must use a new versioned filename.

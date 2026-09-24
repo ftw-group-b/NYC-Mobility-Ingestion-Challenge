@@ -39,3 +39,17 @@ The pipeline measures completeness, validity, uniqueness, consistency, timelines
 ## 10. Exclude incomplete optional Traffic Advisory data
 
 Traffic Advisory was optional and lacked complete date coverage. The team kept the exploration evidence but removed it from the completed analytical pipeline.
+
+## 11. Fail closed when landing provenance is incomplete
+
+An existing raw file is reusable only when its metadata sidecar proves the
+expected source system, URL, filename, byte count, and SHA-256 hash. The pipeline
+does not recreate missing provenance automatically. Intentional revisions use a
+new versioned filename.
+
+## 12. Retry only operations designed for safe reruns
+
+HTTP acquisition uses short bounded backoff for temporary failures. Databricks
+task retries are limited to ingestion and Bronze load because their idempotency
+guards are tested. Transformation and validation failures remain visible rather
+than repeatedly consuming compute.

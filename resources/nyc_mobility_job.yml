@@ -8,14 +8,20 @@ resources:
         and consolidated quality gate in dependency order.
 
       max_concurrent_runs: 1
+      timeout_seconds: 7200
 
       tasks:
         - task_key: ingestion
+          timeout_seconds: 900
+          max_retries: 2
+          min_retry_interval_millis: 30000
+          retry_on_timeout: true
           notebook_task:
             notebook_path: ../notebooks/01_ingestion/01_ingestion.ipynb
             source: WORKSPACE
 
         - task_key: bronze_setup
+          timeout_seconds: 600
           depends_on:
             - task_key: ingestion
           notebook_task:
@@ -23,6 +29,10 @@ resources:
             source: WORKSPACE
 
         - task_key: bronze_load
+          timeout_seconds: 1200
+          max_retries: 1
+          min_retry_interval_millis: 30000
+          retry_on_timeout: true
           depends_on:
             - task_key: bronze_setup
           notebook_task:
@@ -30,6 +40,7 @@ resources:
             source: WORKSPACE
 
         - task_key: bronze_validation
+          timeout_seconds: 600
           depends_on:
             - task_key: bronze_load
           notebook_task:
@@ -37,6 +48,7 @@ resources:
             source: WORKSPACE
 
         - task_key: silver_green_taxi
+          timeout_seconds: 1800
           depends_on:
             - task_key: bronze_validation
           notebook_task:
@@ -44,6 +56,7 @@ resources:
             source: WORKSPACE
 
         - task_key: silver_taxi_zones
+          timeout_seconds: 900
           depends_on:
             - task_key: bronze_validation
           notebook_task:
@@ -51,6 +64,7 @@ resources:
             source: WORKSPACE
 
         - task_key: silver_weather
+          timeout_seconds: 900
           depends_on:
             - task_key: bronze_validation
           notebook_task:
@@ -58,6 +72,7 @@ resources:
             source: WORKSPACE
 
         - task_key: validate_silver_green_taxi
+          timeout_seconds: 600
           depends_on:
             - task_key: silver_green_taxi
           notebook_task:
@@ -65,6 +80,7 @@ resources:
             source: WORKSPACE
 
         - task_key: validate_silver_taxi_zones
+          timeout_seconds: 600
           depends_on:
             - task_key: silver_taxi_zones
           notebook_task:
@@ -72,6 +88,7 @@ resources:
             source: WORKSPACE
 
         - task_key: validate_silver_weather
+          timeout_seconds: 600
           depends_on:
             - task_key: silver_weather
           notebook_task:
@@ -79,6 +96,7 @@ resources:
             source: WORKSPACE
 
         - task_key: gold_creation
+          timeout_seconds: 1800
           depends_on:
             - task_key: validate_silver_green_taxi
             - task_key: validate_silver_taxi_zones
@@ -88,6 +106,7 @@ resources:
             source: WORKSPACE
 
         - task_key: gold_validation
+          timeout_seconds: 600
           depends_on:
             - task_key: gold_creation
           notebook_task:
@@ -95,6 +114,7 @@ resources:
             source: WORKSPACE
 
         - task_key: data_quality_views
+          timeout_seconds: 900
           depends_on:
             - task_key: gold_validation
           notebook_task:
@@ -102,6 +122,7 @@ resources:
             source: WORKSPACE
 
         - task_key: business_analytics
+          timeout_seconds: 900
           depends_on:
             - task_key: gold_validation
           notebook_task:
@@ -109,6 +130,7 @@ resources:
             source: WORKSPACE
 
         - task_key: analytics_validation
+          timeout_seconds: 600
           depends_on:
             - task_key: business_analytics
           notebook_task:
@@ -116,6 +138,7 @@ resources:
             source: WORKSPACE
 
         - task_key: consolidated_quality_gate
+          timeout_seconds: 900
           depends_on:
             - task_key: data_quality_views
             - task_key: analytics_validation
