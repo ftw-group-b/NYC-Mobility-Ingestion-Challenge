@@ -1,6 +1,5 @@
 # Reusability Review — NYC Mobility Pipeline
-
-**Reviewer:** Joy Balansay  
+ 
 **Review date:** 24 September 2026  
 **Reviewed baseline:** [`206371b`](https://github.com/ftw-group-b/NYC-Mobility-Ingestion-Challenge/commit/206371bd798c5f7965a2dbccf55383d0c01a1cc8) on `main`  
 **Status:** Review completed; Phase 2 implementation proposed.
