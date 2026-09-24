@@ -126,8 +126,13 @@ CI validates the required project structure, non-empty SQL files, Python files, 
 Required GitHub environment configuration:
 
 - Environment variable: `DATABRICKS_HOST`
+- Environment variable: `DATABRICKS_ALERT_EMAIL`
 - Environment secret: `DATABRICKS_TOKEN`
 - Required reviewer and `main`-only deployment protection for `production`
+
+The Databricks job sends an email when the pipeline fails. The notification
+recipient is configured separately in the `development` and `production`
+GitHub environments through `DATABRICKS_ALERT_EMAIL`.
 
 The token is the current compatibility mechanism. Workload identity federation
 is the preferred follow-up after the team provisions its Databricks service

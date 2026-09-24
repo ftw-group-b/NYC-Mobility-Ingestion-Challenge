@@ -45,6 +45,10 @@ message, affected source file/month, recovery action, and final successful run.
 ## Escalation and ownership
 
 Repository ownership is declared in `.github/CODEOWNERS`. GitHub production
-environment reviewers own deployment approval; the Databricks job owner owns
-runtime recovery. Add real notification destinations in Databricks before
-claiming automated alert coverage.
+environment reviewers own deployment approval, while the Databricks job owner
+owns runtime recovery.
+
+Failure email notifications use the environment-scoped
+`DATABRICKS_ALERT_EMAIL` variable. A controlled development failure confirmed
+successful delivery. With `alert_on_last_attempt` enabled, a retryable task
+sends an alert only when its final attempt fails.

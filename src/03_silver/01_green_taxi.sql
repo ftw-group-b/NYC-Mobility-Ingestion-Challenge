@@ -103,7 +103,7 @@ WHERE 1 = 0;
 -- COMMAND ----------
 
 -- Incremental execution: appends only files not already present in Silver
-INSERT INTO `ftw-week-08`.`02_silver`.`green_taxi`
+INSERT INTO `ftw-week-08`.`02_silver`.`green_taxi` BY NAME
 SELECT
   VendorID,
 

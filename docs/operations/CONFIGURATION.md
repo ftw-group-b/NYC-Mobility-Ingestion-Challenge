@@ -9,7 +9,8 @@ Create both `development` and `production` GitHub environments.
 | Allowed branch | Pull-request branches | `main` only |
 | Required reviewers | Optional | At least one non-author maintainer |
 | `DATABRICKS_HOST` | Development workspace/account target | Production workspace/account target |
-| Databricks credential | Development identity | Production deployment identity |
+| `DATABRICKS_ALERT_EMAIL` | Development failure-alert recipient | Production failure-alert recipient |
+| `DATABRICKS_TOKEN` | Development identity secret | Production deployment identity secret |
 
 The workflows currently read `DATABRICKS_TOKEN` for compatibility. Prefer an
 environment-scoped secret over a repository-wide secret. Migrate to Databricks
@@ -35,11 +36,17 @@ the documentation from overstating environment isolation.
 
 ## Notifications and run identity
 
-The repository does not guess email addresses, notification destination IDs,
-service-principal IDs, or group names. Configure these account-owned values,
-then add bundle `email_notifications` or notification destinations, `run_as`,
-and resource permissions in a focused PR. Test one controlled failure before
-marking alerting complete.
+Job-level failure email notifications are configured through
+`DATABRICKS_ALERT_EMAIL`. Both deployment workflows pass the environment-scoped
+value to the bundle as `BUNDLE_VAR_alert_email`.
+
+A controlled development failure confirmed successful email delivery. The
+recipient must remain environment-scoped and must not be hard-coded in the
+repository.
+
+The Databricks `run_as` identity and resource permissions still require real
+service-principal or group identifiers. Add them only after those account-owned
+identifiers are provisioned.
 
 ## Version policy
 

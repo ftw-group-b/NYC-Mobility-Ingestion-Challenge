@@ -42,9 +42,11 @@ WITH parsed_json AS (
     source_file,
     batch_id,
     ingested_at
-  FROM `ftw-week-08`.`01_bronze`.`weather_raw`
-  WHERE batch_id NOT IN (
-    SELECT DISTINCT batch_id FROM `ftw-week-08`.`02_silver`.`weather`
+  FROM `ftw-week-08`.`01_bronze`.`weather_raw` AS bronze_weather
+  WHERE NOT EXISTS (
+    SELECT 1
+    FROM `ftw-week-08`.`02_silver`.`weather` AS silver_weather
+    WHERE silver_weather.batch_id = bronze_weather.batch_id
   )
 ),
 exploded_weather AS (
