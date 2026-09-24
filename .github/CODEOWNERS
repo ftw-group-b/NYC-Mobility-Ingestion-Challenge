@@ -1,0 +1,8 @@
+# Default maintainers for repository-wide changes.
+* @killuazai @nellaschema
+
+# Production controls and governed quality gates require both domains to review.
+/.github/workflows/ @killuazai @nellaschema
+/databricks.yml @killuazai @nellaschema
+/resources/ @killuazai @nellaschema
+/tests/end_to_end/ @killuazai @nellaschema

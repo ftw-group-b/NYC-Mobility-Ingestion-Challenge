@@ -36,6 +36,10 @@ jobs:
     name: Validate and deploy Databricks bundle
     runs-on: ubuntu-latest
 
+    environment:
+      name: production
+      url: ${{ vars.DATABRICKS_HOST }}
+
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -52,7 +56,9 @@ jobs:
             exit 1
           fi
       - name: Install Databricks CLI
-        uses: databricks/setup-cli@main
+        uses: databricks/setup-cli@8821c27b1fe57472264eeb6e50c1f31d69552f28
+        with:
+          version: 1.10.0
 
       - name: Validate bundle
         run: databricks bundle validate -t prod
