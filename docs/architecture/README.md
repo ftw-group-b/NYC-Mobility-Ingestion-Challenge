@@ -69,7 +69,16 @@ The three Silver branches run independently after Bronze validation. Gold begins
 
 Green Taxi is loaded month by month. Raw landing follows a first-write-wins rule: an existing deterministic file is verified against its trusted metadata sidecar and returned as `IDEMPOTENT_SKIP` without another download or overwrite. A missing or mismatched sidecar fails closed instead of being reconstructed automatically. New downloads use bounded retry/backoff for temporary HTTP failures and same-directory temporary files before commit. Bronze inserts a source file only when its stable identifier is not already present. The same guards are used for Taxi Zones and Weather, allowing safe reruns without duplicate files or rows. A deliberate source revision must use a new versioned filename.
 
-Silver and Gold use deterministic full-refresh builds at the current course scale. Re-running them recreates the same business rows from the accepted upstream data. Audit timestamps are excluded from logical idempotency comparisons.
+Silver Green Taxi and Weather append only source batches that have not already
+been processed. Silver Taxi Zones uses an idempotent `MERGE`.
+
+The Gold fact table uses an idempotent `MERGE` based on its deterministic
+technical trip key. Small Gold dimensions are rebuilt deterministically with
+`CREATE OR REPLACE`.
+
+Re-running the pipeline therefore does not duplicate accepted source batches
+or fact rows. Audit timestamps are excluded from logical idempotency
+comparisons.
 
 ## Failure behavior
 

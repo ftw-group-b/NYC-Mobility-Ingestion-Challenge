@@ -15,6 +15,7 @@ resources:
           - ${var.alert_email}
       
       notification_settings:
+        alert_on_last_attempt: true
         no_alert_for_skipped_runs: true
         no_alert_for_canceled_runs: true
 

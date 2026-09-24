@@ -37,18 +37,23 @@ jobs:
 
     steps:
       - name: Check out PR branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
 
       - name: Check required configuration
         shell: bash
         run: |
-          if [ -z "$DATABRICKS_HOST" ]; then
-            echo "Missing repository variable: DATABRICKS_HOST"
+          if [ -z "${DATABRICKS_HOST:-}" ]; then
+            echo "Missing GitHub environment variable: DATABRICKS_HOST"
             exit 1
           fi
 
-          if [ -z "$DATABRICKS_TOKEN" ]; then
-            echo "Missing repository secret: DATABRICKS_TOKEN"
+          if [ -z "${DATABRICKS_TOKEN:-}" ]; then
+            echo "Missing GitHub environment secret: DATABRICKS_TOKEN"
+            exit 1
+          fi
+
+          if [ -z "${BUNDLE_VAR_alert_email:-}" ]; then
+            echo "Missing GitHub environment variable: DATABRICKS_ALERT_EMAIL"
             exit 1
           fi
 

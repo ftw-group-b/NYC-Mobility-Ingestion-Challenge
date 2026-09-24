@@ -15,7 +15,6 @@ sync:
 variables:
   alert_email:
     description: Email address for failed pipeline notifications
-    default: samantha.chaves@ftwfoundation.org
 
 targets:
   dev:
