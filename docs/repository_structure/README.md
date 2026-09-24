@@ -33,6 +33,17 @@ Executable checks are grouped into:
 
 The final end-to-end test publishes the consolidated quality result and fails the Databricks task when a critical condition returns `FAIL`.
 
+## `docs/operations/` — production operation
+
+- `RUNBOOK.md` defines monitoring, incident evidence, and safe repair.
+- `CONFIGURATION.md` defines GitHub environments, credentials, version policy,
+  and the current development-data isolation boundary.
+- `CHANGE_CHECKLIST.md` prevents partial changes across source, notebooks,
+  tests, job resources, and documentation.
+
+Retired implementation examples belong in `docs/archive/`, never beside active
+executable tests.
+
 ## Keeping mirrored assets aligned
 
 `src/` and `notebooks/` are two views of the same approved logic: small reviewable modules and the compiled Databricks workflow. When behavior changes, update both locations, add or update the focused test, and revise the related documentation. CI runs `tests/unit/` to detect critical drift before merge.

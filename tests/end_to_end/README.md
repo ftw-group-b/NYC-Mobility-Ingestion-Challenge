@@ -4,4 +4,7 @@
 
 Great Expectations validates that exactly 14 unique checks are present, required fields are populated, and every check has a `PASS` status. A failed GX expectation raises an exception and fails the Databricks task.
 
-`01_end_to_end_quality_gate.ipynb` is retained only as a legacy SQL reference. The deployed job runs notebook `02`; no duplicate quality-gate notebook is maintained under `notebooks/`.
+The previous SQL-only notebook is archived under `docs/archive/` so only the
+active GX gate appears in executable tests. The deployed job runs notebook
+`02`; no duplicate quality-gate implementation is maintained under
+`notebooks/`.

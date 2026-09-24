@@ -121,12 +121,18 @@ The Databricks Asset Bundle is defined in `databricks.yml` and `resources/nyc_mo
 
 The serverless `consolidated_quality_gate` task uses the job environment `gx_environment`, which installs the pinned dependency `great_expectations==1.23.1`.
 
-CI validates the required project structure, non-empty SQL files, Python files, notebook JSON, Python notebook-cell syntax, ingestion rerun behavior, critical source-to-notebook alignment, and the rule that raw Parquet files must not be committed. Pull requests that change deployable assets are validated and deployed to the `development` environment for preview. After an approved PR is merged to `main`, the production workflow validates and deploys the bundle; running the source-to-Gold pipeline remains an explicit manual option.
+CI validates the required project structure, non-empty SQL files, Python files, notebook JSON, Python notebook-cell syntax, ingestion rerun behavior, critical source-to-notebook alignment, and the rule that raw Parquet files must not be committed. Pull requests that change deployable assets are validated and deployed to the `development` environment for preview. After an approved PR is merged to `main`, the `production` environment protects the workflow that validates and deploys the bundle; running the source-to-Gold pipeline remains an explicit manual option.
 
-GitHub configuration:
+Required GitHub environment configuration:
 
-- Repository variable: `DATABRICKS_HOST`
-- Repository secret: `DATABRICKS_TOKEN`
+- Environment variable: `DATABRICKS_HOST`
+- Environment secret: `DATABRICKS_TOKEN`
+- Required reviewer and `main`-only deployment protection for `production`
+
+The token is the current compatibility mechanism. Workload identity federation
+is the preferred follow-up after the team provisions its Databricks service
+principal and GitHub OIDC policy. See the operations configuration guide for
+the development-data isolation boundary and account-owned settings.
 
 Deployment commands:
 
@@ -147,6 +153,9 @@ The production bundle deploys under `/Workspace/Shared/NYC-Mobility-Ingestion-Ch
 - [Engineering Decisions](docs/decisions/README.md)
 - [Final Validation](docs/validation/README.md)
 - [Repository Structure](docs/repository_structure/README.md)
+- [Operations Runbook](docs/operations/RUNBOOK.md)
+- [Environment Configuration](docs/operations/CONFIGURATION.md)
+- [Change-Impact Checklist](docs/operations/CHANGE_CHECKLIST.md)
 
 ## Team
 
