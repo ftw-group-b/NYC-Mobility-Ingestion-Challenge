@@ -23,6 +23,7 @@ concurrency:
 env:
   DATABRICKS_HOST: ${{ vars.DATABRICKS_HOST }}
   DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+  BUNDLE_VAR_alert_email: ${{ vars.DATABRICKS_ALERT_EMAIL }}
 
 jobs:
   deploy-preview:
