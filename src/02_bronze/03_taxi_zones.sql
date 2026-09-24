@@ -21,22 +21,26 @@ WHERE 1 = 0;
 
 -- COMMAND ----------
 
--- load the exact taxi zone file only once
+-- check the target first so an already loaded file is not read or analyzed again
 
-INSERT INTO `ftw-week-08`.`01_bronze`.`taxi_zones`
-SELECT
-    src.*,
-    'nyc_tlc' AS source_system,
-    'taxi_zone_lookup.csv' AS source_file,
-    'taxi_zone_lookup.csv' AS batch_id,
-    CURRENT_TIMESTAMP() AS ingested_at
-FROM read_files(
-    '/Volumes/ftw-week-08/00_source_inspection/cloudfare-r2/groups/week-08/group-b/source/taxi_zones/taxi_zone_lookup.csv',
-    format => 'csv',
-    header => true
-) AS src
-WHERE NOT EXISTS (
-    SELECT 1
-    FROM `ftw-week-08`.`01_bronze`.`taxi_zones`
-    WHERE source_file = 'taxi_zone_lookup.csv'
-);
+BEGIN
+  IF NOT EXISTS (
+      SELECT 1
+      FROM `ftw-week-08`.`01_bronze`.`taxi_zones`
+      WHERE source_file = 'taxi_zone_lookup.csv'
+  ) THEN
+    INSERT INTO `ftw-week-08`.`01_bronze`.`taxi_zones` BY NAME
+    SELECT
+        src.*,
+        'nyc_tlc' AS source_system,
+        'taxi_zone_lookup.csv' AS source_file,
+        'taxi_zone_lookup.csv' AS batch_id,
+        CURRENT_TIMESTAMP() AS ingested_at
+    FROM read_files(
+        '/Volumes/ftw-week-08/00_source_inspection/cloudfare-r2/groups/week-08/group-b/source/taxi_zones/taxi_zone_lookup.csv',
+        format => 'csv',
+        header => true,
+        schemaEvolutionMode => 'none'
+    ) AS src;
+  END IF;
+END;

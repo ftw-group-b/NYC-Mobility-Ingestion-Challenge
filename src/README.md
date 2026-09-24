@@ -18,7 +18,10 @@ The corresponding files under `notebooks/` are the compiled, documented Databric
 
 1. Update the table-level SQL in `src/`.
 2. Apply the same approved logic to its compiled notebook.
-3. Run the matching layer tests.
-4. Run the end-to-end quality gate.
+3. Add or update a focused test under `tests/unit/` when the change affects rerun, schema, or source-to-notebook behavior.
+4. Update the related architecture or layer documentation.
+5. Run CI, the matching layer tests, and the end-to-end quality gate.
 
 Numeric prefixes preserve dependency order within a layer.
+
+CI includes alignment tests for the ingestion helper and Bronze rerun contract. If one mirrored implementation changes without the other, the pull request fails before deployment.

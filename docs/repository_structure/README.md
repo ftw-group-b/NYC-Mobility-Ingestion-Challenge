@@ -24,6 +24,7 @@ This is the modular source library. Ingestion is split by external source, while
 
 Executable checks are grouped into:
 
+- `unit/` for local behavior and source-to-notebook alignment
 - `bronze/`
 - `silver/`
 - `gold/`
@@ -32,6 +33,10 @@ Executable checks are grouped into:
 
 The final end-to-end test publishes the consolidated quality result and fails the Databricks task when a critical condition returns `FAIL`.
 
+## Keeping mirrored assets aligned
+
+`src/` and `notebooks/` are two views of the same approved logic: small reviewable modules and the compiled Databricks workflow. When behavior changes, update both locations, add or update the focused test, and revise the related documentation. CI runs `tests/unit/` to detect critical drift before merge.
+
 ## Naming standard
 
 - ordered execution folders and files use a two-digit numeric prefix; shared helpers use descriptive names;
@@ -39,4 +44,4 @@ The final end-to-end test publishes the consolidated quality result and fails th
 - table and view names match their Gold or Silver objects; and
 - `README.md` is the only intentional uppercase filename.
 
-Duplicate numbered notebooks, duplicate validation folders, SQL notebook exports, and retired placeholder code are excluded from the clean delivery.
+Duplicate numbered notebooks, duplicate validation folders, SQL notebook exports, typo-only README files, and retired placeholder code are excluded from the clean delivery.

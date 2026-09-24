@@ -18,11 +18,12 @@ The final validation is complete when the deployed Databricks job finishes with 
 
 | Evidence | Location |
 |---|---|
+| Local rerun and source-to-notebook contract tests | `tests/unit/` |
 | Layer-specific validation | `tests/bronze/`, `tests/silver/`, and `tests/gold/` |
 | Analytics validation | `tests/analytics/` |
 | Consolidated PASS/FAIL notebook | `tests/end_to_end/02_great_expectations_quality_gate.ipynb` |
 | Dashboard monitoring views | `notebooks/06_dashboard/` |
-| CI structure checks | `.github/workflows/ci.yml` |
+| CI structure, syntax, unit, and alignment checks | `.github/workflows/ci.yml` |
 | Bundle deployment | `.github/workflows/deploy-databricks.yml` |
 
 The repository documentation describes verified conditions and acceptance rules without inventing numerical output that is not stored in the project files.

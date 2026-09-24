@@ -7,3 +7,8 @@
 - `04_weather_raw.sql`: creates and loads the raw Weather payload.
 
 Validation queries are maintained in `tests/bronze/`.
+
+Each load checks the target before reading the source. Existing source files are
+skipped, while new data is inserted with `BY NAME` column alignment. Green Taxi
+and Taxi Zones also disable implicit schema evolution so unexpected source
+changes fail visibly instead of silently changing Bronze.
