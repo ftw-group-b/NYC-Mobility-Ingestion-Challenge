@@ -82,12 +82,12 @@ Traffic Advisory files were explored and retained outside the completed analytic
 │   └── data_quality/
 ├── docs/
 ├── resources/
-├── tests/                 # executable validation grouped by layer
+├── tests/                 # unit, alignment, layer, and end-to-end validation
 ├── databricks.yml
 └── .github/workflows/
 ```
 
-`notebooks/` contains the compiled, documented Databricks workflow. `src/` contains source-specific ingestion modules and one modular SQL file per table or view. `tests/` contains layer-specific and end-to-end validation. Numbered folders show execution order; file names use lowercase `snake_case`.
+`notebooks/` contains the compiled, documented Databricks workflow. `src/` contains source-specific ingestion modules and one modular SQL file per table or view. `tests/` contains local unit/alignment checks plus layer-specific and end-to-end validation. Behavioral changes must be applied to the modular source, compiled notebook, focused tests, and related documentation together. Numbered folders show execution order; file names use lowercase `snake_case`.
 
 ## Data quality framework
 
@@ -121,7 +121,7 @@ The Databricks Asset Bundle is defined in `databricks.yml` and `resources/nyc_mo
 
 The serverless `consolidated_quality_gate` task uses the job environment `gx_environment`, which installs the pinned dependency `great_expectations==1.23.1`.
 
-CI validates the required project structure, non-empty SQL files, Python files, notebook JSON, Python notebook-cell syntax, and the rule that raw Parquet files must not be committed. Pull requests that change deployable assets are validated and deployed to the `development` environment for preview. After an approved PR is merged to `main`, the production workflow validates and deploys the bundle; running the source-to-Gold pipeline remains an explicit manual option.
+CI validates the required project structure, non-empty SQL files, Python files, notebook JSON, Python notebook-cell syntax, ingestion rerun behavior, critical source-to-notebook alignment, and the rule that raw Parquet files must not be committed. Pull requests that change deployable assets are validated and deployed to the `development` environment for preview. After an approved PR is merged to `main`, the production workflow validates and deploys the bundle; running the source-to-Gold pipeline remains an explicit manual option.
 
 GitHub configuration:
 

@@ -23,7 +23,23 @@ The project uses the Databricks medallion pattern:
 
 - `notebooks/` contains the compiled Databricks workflow from ingestion through dashboard-view creation.
 - `src/` contains modular source acquisition and one table/view query per file.
-- `tests/` contains executable validation grouped by Bronze, Silver, Gold, Analytics, and end-to-end scope.
+- `tests/` contains unit, source-to-notebook alignment, Bronze, Silver, Gold, Analytics, and end-to-end validation.
+
+## Change-alignment contract
+
+The runnable notebooks, modular source, tests, and documentation describe one pipeline and must change together:
+
+```text
+src change -> compiled notebook change -> focused test change -> CI validation -> documentation update
+```
+
+- `src/` is the small, reviewable implementation.
+- `notebooks/` is the compiled workflow deployed to Databricks.
+- `tests/unit/` protects rerun behavior and checks critical source-to-notebook contracts.
+- layer tests and the Great Expectations gate validate data after deployment.
+- `docs/` records the reason, expected behavior, and recovery procedure.
+
+CI runs the unit and alignment tests so an ingestion or Bronze change cannot be accepted when its source and compiled notebook disagree.
 
 ## Databricks task flow
 
@@ -58,6 +74,17 @@ Silver and Gold use deterministic full-refresh builds at the current course scal
 ## Failure behavior
 
 Validation tasks are placed directly after the layer they protect. The final Great Expectations notebook consolidates the governed checks and raises an exception when an expectation fails, stopping the Databricks job before the delivery is treated as healthy.
+
+## Rerun incident and recovery
+
+The first pipeline run succeeded, but a later rerun exposed two idempotency gaps before the Great Expectations task was reached. GX did not cause either incident; it remains the final quality gate.
+
+| Stage | Problem encountered | Resolution | Long-term behavior |
+|---|---|---|---|
+| Ingestion | Open-Meteo could return different bytes for the same deterministic filename. The old logic downloaded again and rejected the existing file as different. | Apply first-write-wins: validate an existing local file against its SHA-256 metadata and return `IDEMPOTENT_SKIP` without calling the source again. | Repeated runs reuse the verified raw file. An intentional source revision must use a new versioned filename. A hash mismatch still fails safely. |
+| Bronze load | The old `WHERE NOT EXISTS` filter could still make Spark inspect the source, while `SELECT src.*` depended on column position. | Check the target for the `source_file` before reading the source, skip an already-loaded batch, insert new rows `BY NAME`, and disable schema evolution for controlled sources. | Repeated batches do not create duplicates. Unexpected schema changes stop visibly instead of being silently accepted. |
+
+After both changes were merged, CI, deployment, and the manual source-to-Gold pipeline run completed successfully. This runtime result confirms the current rerun path; the unit and alignment tests protect the same contract on future changes.
 
 ## Dashboards
 

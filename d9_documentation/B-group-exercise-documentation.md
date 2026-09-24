@@ -76,3 +76,11 @@ Our deployment process is automated using GitHub Actions.
 Upon successfully merging the PR into the main branch, the Continuous Deployment (CD) pipeline (`CD - Deploy NYC Mobility to Databricks`) is automatically triggered. This pipeline safely deploys the updated code and notebooks directly to Databricks.
 
 ![GitHub Actions CD successful deployment to Databricks](./images/6.png)
+
+## Production Rerun Issue and Recovery
+
+- **Problem encountered:** A rerun stopped first at ingestion because the source could return different content under the same filename. After ingestion was fixed, Bronze also failed because the old duplicate guard could still inspect the source and matched columns by position.
+- **How we fixed it:** Existing raw files are now verified locally and skipped without downloading again. Bronze checks whether the source batch is already loaded before reading it, skips duplicates, and inserts new rows by column name.
+- **Long-term confidence:** The fixes passed unit and alignment tests, CI, deployment, and a complete manual pipeline run. Future intentional source revisions must use a new versioned filename, while unexpected file or schema changes still fail safely.
+
+These incidents happened before the Great Expectations task, so GX was not the cause. GX remains the final consolidated quality gate.
