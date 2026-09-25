@@ -10,7 +10,7 @@ on:
       - notebooks/**
       - src/**
       - tests/**
-      - dashboards/**
+      - dashboard/**
       - .github/workflows/deploy-databricks.yml
 
   workflow_dispatch:
