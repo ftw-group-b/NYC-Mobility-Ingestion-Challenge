@@ -10,6 +10,7 @@ on:
       - notebooks/**
       - src/**
       - tests/**
+      - dashboard/**
       - .github/workflows/deploy-databricks-preview.yml
 
 permissions:
@@ -24,6 +25,7 @@ env:
   DATABRICKS_HOST: ${{ vars.DATABRICKS_HOST }}
   DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
   BUNDLE_VAR_alert_email: ${{ vars.DATABRICKS_ALERT_EMAIL }}
+  BUNDLE_VAR_warehouse_id: ${{ vars.DATABRICKS_WAREHOUSE_ID }}
 
 jobs:
   deploy-preview:
@@ -57,6 +59,11 @@ jobs:
             exit 1
           fi
 
+          if [ -z "${BUNDLE_VAR_warehouse_id:-}" ]; then
+            echo "Missing GitHub environment variable: DATABRICKS_WAREHOUSE_ID"
+            exit 1
+          fi
+
       - name: Install Databricks CLI
         uses: databricks/setup-cli@8821c27b1fe57472264eeb6e50c1f31d69552f28
         with:
@@ -66,4 +73,7 @@ jobs:
         run: databricks bundle validate -t dev
 
       - name: Deploy development bundle
-        run: databricks bundle deploy -t dev
+        # The dev dashboard source paths were corrected, so Databricks must
+        # recreate the two preview dashboards once. GitHub Actions cannot
+        # answer an interactive confirmation prompt.
+        run: databricks bundle deploy -t dev --auto-approve
