@@ -1,0 +1,2236 @@
+{
+  "datasets": [
+    {
+      "name": "taxi_demand",
+      "displayName": "Taxi Demand by Day Hour Zone",
+      "queryLines": [
+        "SELECT\n",
+        "  TO_DATE(f.pickup_datetime) AS pickup_date,\n",
+        "  DATE_FORMAT(f.pickup_datetime, 'EEEE') AS pickup_day_name,\n",
+        "  f.pickup_taxi_zone_key,\n",
+        "  t.hour_24 AS pickup_hour_24,\n",
+        "  t.hour_label AS pickup_hour_label,\n",
+        "  z.zone_name AS pickup_zone,\n",
+        "  z.borough AS pickup_borough,\n",
+        "  COUNT(*) AS trip_volume,\n",
+        "  ROUND(AVG(f.trip_duration_minutes), 2) AS avg_trip_duration_minutes,\n",
+        "  ROUND(AVG(f.trip_distance), 2) AS avg_trip_distance_miles,\n",
+        "  ROUND(SUM(f.total_amount), 2) AS total_trip_amount\n",
+        "FROM\n",
+        "  `ftw-week-08`.`03_gold`.fact_green_taxi_trip AS f\n",
+        "    LEFT JOIN `ftw-week-08`.`03_gold`.dim_taxi_zone AS z\n",
+        "      ON f.pickup_taxi_zone_key = z.taxi_zone_key\n",
+        "    LEFT JOIN `ftw-week-08`.`03_gold`.dim_time AS t\n",
+        "      ON f.pickup_time_key = t.time_key\n",
+        "WHERE\n",
+        "  f.dq_out_of_range_datetime = FALSE\n",
+        "GROUP BY\n",
+        "  TO_DATE(f.pickup_datetime),\n",
+        "  DATE_FORMAT(f.pickup_datetime, 'EEEE'),\n",
+        "  f.pickup_taxi_zone_key,\n",
+        "  t.hour_24,\n",
+        "  t.hour_label,\n",
+        "  z.zone_name,\n",
+        "  z.borough\n",
+        "ORDER BY\n",
+        "  trip_volume DESC"
+      ]
+    },
+    {
+      "name": "kpi_summary",
+      "displayName": "KPI Summary",
+      "queryLines": [
+        "WITH base AS (\n",
+        "  SELECT\n",
+        "    COUNT(*) AS total_trips,\n",
+        "    ROUND(SUM(f.total_amount), 2) AS total_fare_activity,\n",
+        "    ROUND(AVG(f.trip_duration_minutes), 2) AS avg_trip_duration_minutes,\n",
+        "    ROUND(AVG(f.trip_distance), 2) AS avg_trip_distance_miles\n",
+        "  FROM\n",
+        "    `ftw-week-08`.`03_gold`.fact_green_taxi_trip AS f\n",
+        "  WHERE\n",
+        "    f.dq_out_of_range_datetime = FALSE\n",
+        "),\n",
+        "busiest_zone AS (\n",
+        "  SELECT\n",
+        "    z.zone_name AS busiest_pickup_zone,\n",
+        "    COUNT(*) AS busiest_zone_trips\n",
+        "  FROM\n",
+        "    `ftw-week-08`.`03_gold`.fact_green_taxi_trip AS f\n",
+        "      LEFT JOIN `ftw-week-08`.`03_gold`.dim_taxi_zone AS z\n",
+        "        ON f.pickup_taxi_zone_key = z.taxi_zone_key\n",
+        "  WHERE\n",
+        "    f.dq_out_of_range_datetime = FALSE\n",
+        "  GROUP BY\n",
+        "    z.zone_name\n",
+        "  ORDER BY\n",
+        "    COUNT(*) DESC\n",
+        "  LIMIT 1\n",
+        "),\n",
+        "peak_hour AS (\n",
+        "  SELECT\n",
+        "    t.hour_24 AS peak_pickup_hour,\n",
+        "    COUNT(*) AS peak_hour_trips\n",
+        "  FROM\n",
+        "    `ftw-week-08`.`03_gold`.fact_green_taxi_trip AS f\n",
+        "      LEFT JOIN `ftw-week-08`.`03_gold`.dim_time AS t\n",
+        "        ON f.pickup_time_key = t.time_key\n",
+        "  WHERE\n",
+        "    f.dq_out_of_range_datetime = FALSE\n",
+        "  GROUP BY\n",
+        "    t.hour_24\n",
+        "  ORDER BY\n",
+        "    COUNT(*) DESC\n",
+        "  LIMIT 1\n",
+        ")\n",
+        "SELECT\n",
+        "  b.total_trips,\n",
+        "  b.total_fare_activity,\n",
+        "  b.avg_trip_duration_minutes,\n",
+        "  b.avg_trip_distance_miles,\n",
+        "  bz.busiest_pickup_zone,\n",
+        "  bz.busiest_zone_trips,\n",
+        "  ph.peak_pickup_hour,\n",
+        "  ph.peak_hour_trips\n",
+        "FROM\n",
+        "  base b CROSS JOIN busiest_zone bz CROSS JOIN peak_hour ph"
+      ]
+    },
+    {
+      "name": "weather_behavior",
+      "displayName": "Weather and Trip Behavior",
+      "queryLines": [
+        "WITH trip_weather AS (\n",
+        "  SELECT\n",
+        "    f.trip_key,\n",
+        "    f.trip_duration_minutes,\n",
+        "    f.trip_distance,\n",
+        "    f.fare_amount,\n",
+        "    f.total_amount,\n",
+        "    w.weather_code,\n",
+        "    w.temperature_2m,\n",
+        "    w.precipitation,\n",
+        "    w.rain,\n",
+        "    w.snowfall,\n",
+        "    w.wind_speed_10m,\n",
+        "    CASE\n",
+        "      WHEN w.weather_code = 0 THEN 'Clear'\n",
+        "      WHEN w.weather_code IN (1, 2, 3) THEN 'Cloudy'\n",
+        "      WHEN w.weather_code IN (45, 48) THEN 'Fog'\n",
+        "      WHEN w.weather_code IN (51, 53, 55, 56, 57) THEN 'Drizzle'\n",
+        "      WHEN w.weather_code IN (61, 63, 65, 66, 67, 80, 81, 82) THEN 'Rain'\n",
+        "      WHEN w.weather_code IN (71, 73, 75, 77, 85, 86) THEN 'Snow'\n",
+        "      WHEN w.weather_code IN (95, 96, 99) THEN 'Thunderstorm'\n",
+        "      ELSE 'Other / Unknown'\n",
+        "    END AS weather_condition\n",
+        "  FROM\n",
+        "    `ftw-week-08`.`03_gold`.fact_green_taxi_trip AS f\n",
+        "      INNER JOIN `ftw-week-08`.`03_gold`.dim_weather_hour AS w\n",
+        "        ON f.pickup_weather_hour_key = w.weather_hour_key\n",
+        "  WHERE\n",
+        "    f.dq_out_of_range_datetime = FALSE\n",
+        ")\n",
+        "SELECT\n",
+        "  weather_condition,\n",
+        "  weather_code,\n",
+        "  COUNT(*) AS trip_volume,\n",
+        "  ROUND(AVG(trip_duration_minutes), 2) AS avg_trip_duration_minutes,\n",
+        "  ROUND(AVG(trip_distance), 2) AS avg_trip_distance_miles,\n",
+        "  ROUND(AVG(fare_amount), 2) AS avg_fare_amount,\n",
+        "  ROUND(SUM(total_amount), 2) AS total_trip_amount,\n",
+        "  ROUND(AVG(temperature_2m), 2) AS trip_weighted_avg_temperature_c,\n",
+        "  ROUND(AVG(precipitation), 2) AS trip_weighted_avg_precipitation_mm,\n",
+        "  ROUND(AVG(rain), 2) AS trip_weighted_avg_rain_mm,\n",
+        "  ROUND(AVG(snowfall), 2) AS trip_weighted_avg_snowfall_cm,\n",
+        "  ROUND(AVG(wind_speed_10m), 2) AS trip_weighted_avg_wind_speed_10m\n",
+        "FROM\n",
+        "  trip_weather\n",
+        "GROUP BY\n",
+        "  weather_condition,\n",
+        "  weather_code\n",
+        "ORDER BY\n",
+        "  trip_volume DESC"
+      ]
+    },
+    {
+      "name": "area_mobility",
+      "displayName": "Area Mobility Patterns",
+      "queryLines": [
+        "WITH pickup_metrics AS (\n",
+        "  SELECT\n",
+        "    f.pickup_taxi_zone_key AS taxi_zone_key,\n",
+        "    COUNT(*) AS pickup_trip_volume,\n",
+        "    COUNT(DISTINCT TO_DATE(f.pickup_datetime)) AS active_pickup_days,\n",
+        "    ROUND(AVG(f.trip_duration_minutes), 2) AS avg_trip_duration_minutes,\n",
+        "    ROUND(AVG(f.trip_distance), 2) AS avg_trip_distance_miles,\n",
+        "    ROUND(SUM(f.total_amount), 2) AS total_fare_activity,\n",
+        "    ROUND(AVG(f.total_amount), 2) AS avg_fare_amount,\n",
+        "    SUM(\n",
+        "      CASE\n",
+        "        WHEN\n",
+        "          w.weather_code BETWEEN 51 AND 67\n",
+        "          OR w.weather_code BETWEEN 71 AND 77\n",
+        "          OR w.weather_code BETWEEN 80 AND 86\n",
+        "          OR w.weather_code BETWEEN 95 AND 99\n",
+        "        THEN\n",
+        "          1\n",
+        "        ELSE 0\n",
+        "      END\n",
+        "    ) AS adverse_weather_pickups,\n",
+        "    SUM(\n",
+        "      CASE\n",
+        "        WHEN w.weather_code IN (0, 1, 2, 3) THEN 1\n",
+        "        ELSE 0\n",
+        "      END\n",
+        "    ) AS clear_or_cloudy_pickups\n",
+        "  FROM\n",
+        "    `ftw-week-08`.`03_gold`.fact_green_taxi_trip AS f\n",
+        "      LEFT JOIN `ftw-week-08`.`03_gold`.dim_weather_hour AS w\n",
+        "        ON f.pickup_weather_hour_key = w.weather_hour_key\n",
+        "  GROUP BY\n",
+        "    f.pickup_taxi_zone_key\n",
+        "),\n",
+        "dropoff_metrics AS (\n",
+        "  SELECT\n",
+        "    dropoff_taxi_zone_key AS taxi_zone_key,\n",
+        "    COUNT(*) AS dropoff_trip_volume\n",
+        "  FROM\n",
+        "    `ftw-week-08`.`03_gold`.fact_green_taxi_trip\n",
+        "  GROUP BY\n",
+        "    dropoff_taxi_zone_key\n",
+        "),\n",
+        "zone_hour_counts AS (\n",
+        "  SELECT\n",
+        "    pickup_taxi_zone_key AS taxi_zone_key,\n",
+        "    pickup_time_key AS pickup_hour,\n",
+        "    COUNT(*) AS trip_volume\n",
+        "  FROM\n",
+        "    `ftw-week-08`.`03_gold`.fact_green_taxi_trip\n",
+        "  GROUP BY\n",
+        "    pickup_taxi_zone_key,\n",
+        "    pickup_time_key\n",
+        "),\n",
+        "peak_hour AS (\n",
+        "  SELECT\n",
+        "    taxi_zone_key,\n",
+        "    pickup_hour AS peak_pickup_hour,\n",
+        "    trip_volume AS peak_hour_trip_volume\n",
+        "  FROM\n",
+        "    (\n",
+        "      SELECT\n",
+        "        taxi_zone_key,\n",
+        "        pickup_hour,\n",
+        "        trip_volume,\n",
+        "        ROW_NUMBER() OVER (\n",
+        "            PARTITION BY taxi_zone_key\n",
+        "            ORDER BY trip_volume DESC, pickup_hour\n",
+        "          ) AS hour_rank\n",
+        "      FROM\n",
+        "        zone_hour_counts\n",
+        "    )\n",
+        "  WHERE\n",
+        "    hour_rank = 1\n",
+        ")\n",
+        "SELECT\n",
+        "  z.zone_name,\n",
+        "  z.borough,\n",
+        "  z.service_zone,\n",
+        "  p.pickup_trip_volume,\n",
+        "  COALESCE(d.dropoff_trip_volume, 0) AS dropoff_trip_volume,\n",
+        "  p.active_pickup_days,\n",
+        "  p.avg_trip_duration_minutes,\n",
+        "  p.avg_trip_distance_miles,\n",
+        "  p.total_fare_activity,\n",
+        "  p.avg_fare_amount,\n",
+        "  ph.peak_pickup_hour,\n",
+        "  ph.peak_hour_trip_volume,\n",
+        "  p.adverse_weather_pickups,\n",
+        "  p.clear_or_cloudy_pickups,\n",
+        "  ROUND(\n",
+        "    100.0\n",
+        "      * p.adverse_weather_pickups\n",
+        "      / NULLIF(p.adverse_weather_pickups + p.clear_or_cloudy_pickups, 0),\n",
+        "    2\n",
+        "  ) AS adverse_weather_pickup_share_pct\n",
+        "FROM\n",
+        "  pickup_metrics AS p\n",
+        "    LEFT JOIN dropoff_metrics AS d\n",
+        "      ON p.taxi_zone_key = d.taxi_zone_key\n",
+        "    LEFT JOIN peak_hour AS ph\n",
+        "      ON p.taxi_zone_key = ph.taxi_zone_key\n",
+        "    LEFT JOIN `ftw-week-08`.`03_gold`.dim_taxi_zone AS z\n",
+        "      ON p.taxi_zone_key = z.taxi_zone_key\n",
+        "ORDER BY\n",
+        "  p.pickup_trip_volume DESC,\n",
+        "  p.total_fare_activity DESC"
+      ]
+    },
+    {
+      "name": "top_pickup_zones",
+      "displayName": "Busiest Pickup Zones",
+      "queryLines": [
+        "-- SECTION 2: Busiest Pickup Zones with Revenue Context\n",
+        "SELECT\n",
+        "  z.zone_name AS pickup_zone,\n",
+        "  z.borough AS pickup_borough,\n",
+        "  COUNT(*) AS trip_volume,\n",
+        "  ROUND(SUM(f.total_amount), 2) AS total_fare_revenue\n",
+        "FROM\n",
+        "  fact_green_taxi_trip AS f\n",
+        "    INNER JOIN dim_taxi_zone AS z\n",
+        "      ON f.pickup_taxi_zone_key = z.taxi_zone_key\n",
+        "GROUP BY\n",
+        "  z.zone_name,\n",
+        "  z.borough\n",
+        "ORDER BY\n",
+        "  trip_volume DESC\n",
+        "LIMIT 20"
+      ],
+      "catalog": "ftw-week-08",
+      "schema": "03_gold"
+    },
+    {
+      "name": "kpi_overview",
+      "displayName": "KPI Overview Metrics",
+      "queryLines": [
+        "-- SECTION 1: Executive Overview KPIs\n",
+        "SELECT\n",
+        "  COUNT(*) AS total_trips,\n",
+        "  ROUND(SUM(total_amount), 2) AS total_fare_revenue,\n",
+        "  ROUND(AVG(trip_duration_minutes), 2) AS avg_trip_duration_minutes,\n",
+        "  ROUND(AVG(trip_distance), 2) AS avg_trip_distance_miles,\n",
+        "  SUM(\n",
+        "    CASE\n",
+        "      WHEN dq_missing_weather_coverage = TRUE THEN 1\n",
+        "      ELSE 0\n",
+        "    END\n",
+        "  ) AS trips_missing_weather,\n",
+        "  ROUND(\n",
+        "    100.0\n",
+        "      * SUM(\n",
+        "        CASE\n",
+        "          WHEN dq_missing_weather_coverage = TRUE THEN 1\n",
+        "          ELSE 0\n",
+        "        END\n",
+        "      )\n",
+        "      / COUNT(*),\n",
+        "    2\n",
+        "  ) AS pct_trips_missing_weather\n",
+        "FROM\n",
+        "  fact_green_taxi_trip\n",
+        "WHERE\n",
+        "  dq_out_of_range_datetime = FALSE"
+      ],
+      "catalog": "ftw-week-08",
+      "schema": "03_gold"
+    },
+    {
+      "name": "demand_by_day_hour",
+      "displayName": "Trip Demand by Day and Hour",
+      "queryLines": [
+        "-- SECTION 2: When Demand is Highest - Day/Hour Heatmap\n",
+        "SELECT\n",
+        "  dd.day_name AS pickup_day_name,\n",
+        "  dt.hour_label AS pickup_hour_label,\n",
+        "  COUNT(*) AS trip_volume\n",
+        "FROM\n",
+        "  fact_green_taxi_trip AS f\n",
+        "    INNER JOIN dim_date AS dd\n",
+        "      ON f.pickup_date_key = dd.date_key\n",
+        "    INNER JOIN dim_time AS dt\n",
+        "      ON f.pickup_time_key = dt.time_key\n",
+        "WHERE\n",
+        "  dt.time_key > 0 -- Exclude Unknown time\n",
+        "GROUP BY\n",
+        "  dd.day_name,\n",
+        "  dt.hour_label\n",
+        "ORDER BY\n",
+        "  CASE dd.day_name\n",
+        "    WHEN 'Monday' THEN 1\n",
+        "    WHEN 'Tuesday' THEN 2\n",
+        "    WHEN 'Wednesday' THEN 3\n",
+        "    WHEN 'Thursday' THEN 4\n",
+        "    WHEN 'Friday' THEN 5\n",
+        "    WHEN 'Saturday' THEN 6\n",
+        "    WHEN 'Sunday' THEN 7\n",
+        "  END,\n",
+        "  dt.hour_label"
+      ],
+      "catalog": "ftw-week-08",
+      "schema": "03_gold"
+    },
+    {
+      "name": "weather_impact",
+      "displayName": "Weather Impact on Trips",
+      "queryLines": [
+        "-- SECTION 3: Weather Effects on Demand and Behavior\n",
+        "-- Classify weather_code into readable conditions\n",
+        "-- Include Unknown/missing weather in counts but exclude from averages\n",
+        "WITH classified_trips AS (\n",
+        "  SELECT\n",
+        "    f.trip_key,\n",
+        "    f.trip_duration_minutes,\n",
+        "    f.trip_distance,\n",
+        "    f.fare_amount,\n",
+        "    f.total_amount,\n",
+        "    w.weather_code,\n",
+        "    w.temperature_2m,\n",
+        "    CASE\n",
+        "      WHEN f.pickup_weather_hour_key = 0 THEN 'Unknown / No Coverage'\n",
+        "      WHEN w.weather_code = 0 THEN 'Clear'\n",
+        "      WHEN w.weather_code IN (1, 2, 3) THEN 'Cloudy'\n",
+        "      WHEN w.weather_code IN (45, 48) THEN 'Fog'\n",
+        "      WHEN w.weather_code BETWEEN 51 AND 57 THEN 'Drizzle'\n",
+        "      WHEN\n",
+        "        w.weather_code BETWEEN 61 AND 67\n",
+        "        OR w.weather_code BETWEEN 80 AND 82\n",
+        "      THEN\n",
+        "        'Rain'\n",
+        "      WHEN\n",
+        "        w.weather_code BETWEEN 71 AND 77\n",
+        "        OR w.weather_code BETWEEN 85 AND 86\n",
+        "      THEN\n",
+        "        'Snow'\n",
+        "      WHEN w.weather_code BETWEEN 95 AND 99 THEN 'Thunderstorm'\n",
+        "      ELSE 'Other / Unknown'\n",
+        "    END AS weather_condition\n",
+        "  FROM\n",
+        "    fact_green_taxi_trip AS f\n",
+        "      LEFT JOIN dim_weather_hour AS w\n",
+        "        ON f.pickup_weather_hour_key = w.weather_hour_key\n",
+        "  WHERE\n",
+        "    f.dq_out_of_range_datetime = FALSE\n",
+        ")\n",
+        "SELECT\n",
+        "  weather_condition,\n",
+        "  COUNT(*) AS trip_volume,\n",
+        "  ROUND(\n",
+        "    AVG(\n",
+        "      CASE\n",
+        "        WHEN weather_condition != 'Unknown / No Coverage' THEN trip_duration_minutes\n",
+        "      END\n",
+        "    ),\n",
+        "    2\n",
+        "  ) AS avg_trip_duration_minutes,\n",
+        "  ROUND(\n",
+        "    AVG(\n",
+        "      CASE\n",
+        "        WHEN weather_condition != 'Unknown / No Coverage' THEN trip_distance\n",
+        "      END\n",
+        "    ),\n",
+        "    2\n",
+        "  ) AS avg_trip_distance_miles,\n",
+        "  ROUND(\n",
+        "    AVG(\n",
+        "      CASE\n",
+        "        WHEN weather_condition != 'Unknown / No Coverage' THEN fare_amount\n",
+        "      END\n",
+        "    ),\n",
+        "    2\n",
+        "  ) AS avg_fare_amount,\n",
+        "  ROUND(SUM(total_amount), 2) AS total_trip_amount,\n",
+        "  ROUND(\n",
+        "    AVG(\n",
+        "      CASE\n",
+        "        WHEN weather_condition != 'Unknown / No Coverage' THEN temperature_2m\n",
+        "      END\n",
+        "    ),\n",
+        "    2\n",
+        "  ) AS avg_temperature_c\n",
+        "FROM\n",
+        "  classified_trips\n",
+        "GROUP BY\n",
+        "  weather_condition\n",
+        "ORDER BY\n",
+        "  CASE weather_condition\n",
+        "    WHEN 'Clear' THEN 1\n",
+        "    WHEN 'Cloudy' THEN 2\n",
+        "    WHEN 'Fog' THEN 3\n",
+        "    WHEN 'Drizzle' THEN 4\n",
+        "    WHEN 'Rain' THEN 5\n",
+        "    WHEN 'Snow' THEN 6\n",
+        "    WHEN 'Thunderstorm' THEN 7\n",
+        "    WHEN 'Other / Unknown' THEN 8\n",
+        "    WHEN 'Unknown / No Coverage' THEN 9\n",
+        "  END"
+      ],
+      "catalog": "ftw-week-08",
+      "schema": "03_gold"
+    },
+    {
+      "name": "zone_mobility",
+      "displayName": "Zone Mobility Patterns",
+      "queryLines": [
+        "WITH pickup_metrics AS (\n",
+        "  SELECT\n",
+        "    f.pickup_taxi_zone_key AS taxi_zone_key,\n",
+        "    COUNT(*) AS pickup_trip_volume,\n",
+        "    COUNT(DISTINCT TO_DATE(f.pickup_datetime)) AS active_pickup_days,\n",
+        "    ROUND(AVG(f.trip_duration_minutes), 2) AS avg_trip_duration_minutes,\n",
+        "    ROUND(AVG(f.trip_distance), 2) AS avg_trip_distance_miles,\n",
+        "    ROUND(SUM(f.total_amount), 2) AS total_trip_amount,\n",
+        "    ROUND(AVG(f.total_amount), 2) AS avg_trip_amount,\n",
+        "    SUM(\n",
+        "      CASE\n",
+        "        WHEN\n",
+        "          w.weather_code IN (\n",
+        "            51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 71, 73, 75, 77, 80, 81, 82, 85, 86, 95, 96, 99\n",
+        "          )\n",
+        "        THEN\n",
+        "          1\n",
+        "        ELSE 0\n",
+        "      END\n",
+        "    ) AS adverse_weather_pickups,\n",
+        "    SUM(\n",
+        "      CASE\n",
+        "        WHEN w.weather_code IN (0, 1, 2, 3) THEN 1\n",
+        "        ELSE 0\n",
+        "      END\n",
+        "    ) AS clear_or_cloudy_pickups\n",
+        "  FROM\n",
+        "    `ftw-week-08`.`03_gold`.fact_green_taxi_trip AS f\n",
+        "      LEFT JOIN `ftw-week-08`.`03_gold`.dim_weather_hour AS w\n",
+        "        ON f.pickup_weather_hour_key = w.weather_hour_key\n",
+        "  WHERE\n",
+        "    f.dq_out_of_range_datetime = FALSE\n",
+        "  GROUP BY\n",
+        "    f.pickup_taxi_zone_key\n",
+        "),\n",
+        "dropoff_metrics AS (\n",
+        "  SELECT\n",
+        "    dropoff_taxi_zone_key AS taxi_zone_key,\n",
+        "    COUNT(*) AS dropoff_trip_volume\n",
+        "  FROM\n",
+        "    `ftw-week-08`.`03_gold`.fact_green_taxi_trip\n",
+        "  WHERE\n",
+        "    dq_out_of_range_datetime = FALSE\n",
+        "  GROUP BY\n",
+        "    dropoff_taxi_zone_key\n",
+        "),\n",
+        "zone_hour_counts AS (\n",
+        "  SELECT\n",
+        "    f.pickup_taxi_zone_key AS taxi_zone_key,\n",
+        "    t.hour_24 AS pickup_hour_24,\n",
+        "    t.hour_label AS pickup_hour_label,\n",
+        "    COUNT(*) AS trip_volume\n",
+        "  FROM\n",
+        "    `ftw-week-08`.`03_gold`.fact_green_taxi_trip AS f\n",
+        "      LEFT JOIN `ftw-week-08`.`03_gold`.dim_time AS t\n",
+        "        ON f.pickup_time_key = t.time_key\n",
+        "  WHERE\n",
+        "    f.dq_out_of_range_datetime = FALSE\n",
+        "  GROUP BY\n",
+        "    f.pickup_taxi_zone_key,\n",
+        "    t.hour_24,\n",
+        "    t.hour_label\n",
+        "),\n",
+        "peak_hour AS (\n",
+        "  SELECT\n",
+        "    taxi_zone_key,\n",
+        "    pickup_hour_24 AS peak_pickup_hour_24,\n",
+        "    pickup_hour_label AS peak_pickup_hour_label,\n",
+        "    trip_volume AS peak_hour_trip_volume\n",
+        "  FROM\n",
+        "    (\n",
+        "      SELECT\n",
+        "        *,\n",
+        "        ROW_NUMBER() OVER (\n",
+        "            PARTITION BY taxi_zone_key\n",
+        "            ORDER BY trip_volume DESC, pickup_hour_24 ASC NULLS LAST\n",
+        "          ) AS hour_rank\n",
+        "      FROM\n",
+        "        zone_hour_counts\n",
+        "    )\n",
+        "  WHERE\n",
+        "    hour_rank = 1\n",
+        ")\n",
+        "SELECT\n",
+        "  COALESCE(p.taxi_zone_key, d.taxi_zone_key) AS taxi_zone_key,\n",
+        "  z.zone_name,\n",
+        "  z.borough,\n",
+        "  z.service_zone,\n",
+        "  COALESCE(p.pickup_trip_volume, 0) AS pickup_trip_volume,\n",
+        "  COALESCE(d.dropoff_trip_volume, 0) AS dropoff_trip_volume,\n",
+        "  COALESCE(p.active_pickup_days, 0) AS active_pickup_days,\n",
+        "  p.avg_trip_duration_minutes,\n",
+        "  p.avg_trip_distance_miles,\n",
+        "  p.total_trip_amount,\n",
+        "  p.avg_trip_amount,\n",
+        "  ph.peak_pickup_hour_24,\n",
+        "  ph.peak_pickup_hour_label,\n",
+        "  ph.peak_hour_trip_volume,\n",
+        "  p.adverse_weather_pickups,\n",
+        "  p.clear_or_cloudy_pickups,\n",
+        "  ROUND(\n",
+        "    100.0\n",
+        "      * p.adverse_weather_pickups\n",
+        "      / NULLIF(p.adverse_weather_pickups + p.clear_or_cloudy_pickups, 0),\n",
+        "    2\n",
+        "  ) AS adverse_weather_pickup_share_pct\n",
+        "FROM\n",
+        "  pickup_metrics AS p\n",
+        "    FULL OUTER JOIN dropoff_metrics AS d\n",
+        "      ON p.taxi_zone_key <=> d.taxi_zone_key\n",
+        "    LEFT JOIN peak_hour AS ph\n",
+        "      ON p.taxi_zone_key <=> ph.taxi_zone_key\n",
+        "    LEFT JOIN `ftw-week-08`.`03_gold`.dim_taxi_zone AS z\n",
+        "      ON COALESCE(p.taxi_zone_key, d.taxi_zone_key) = z.taxi_zone_key\n",
+        "ORDER BY\n",
+        "  COALESCE(p.pickup_trip_volume, 0) DESC,\n",
+        "  COALESCE(p.total_trip_amount, 0) DESC"
+      ],
+      "catalog": "ftw-week-08",
+      "schema": "03_gold"
+    },
+    {
+      "name": "demand_by_date",
+      "displayName": "Daily Trip Volume Trend",
+      "queryLines": [
+        "-- SECTION 2: Trip Volume by Pickup Date Trend\n",
+        "SELECT\n",
+        "  dd.full_date AS pickup_date,\n",
+        "  dd.day_name AS pickup_day_name,\n",
+        "  COUNT(*) AS trip_volume,\n",
+        "  ROUND(SUM(f.total_amount), 2) AS total_fare_revenue\n",
+        "FROM\n",
+        "  fact_green_taxi_trip AS f\n",
+        "    INNER JOIN dim_date AS dd\n",
+        "      ON f.pickup_date_key = dd.date_key\n",
+        "GROUP BY\n",
+        "  dd.full_date,\n",
+        "  dd.day_name\n",
+        "ORDER BY\n",
+        "  dd.full_date"
+      ],
+      "catalog": "ftw-week-08",
+      "schema": "03_gold"
+    },
+    {
+      "name": "fare_per_mile_borough",
+      "displayName": "Fare Per Mile by Borough",
+      "queryLines": [
+        "SELECT\n",
+        "    z.borough,\n",
+        "    COUNT(*) AS trip_volume,\n",
+        "    ROUND(SUM(f.total_amount), 2) AS total_trip_amount,\n",
+        "    ROUND(SUM(f.trip_distance), 2) AS total_distance_miles,\n",
+        "    ROUND(SUM(f.total_amount) / NULLIF(SUM(f.trip_distance), 0), 2) AS avg_fare_per_mile\n",
+        "\n",
+        "FROM `ftw-week-08`.`03_gold`.fact_green_taxi_trip AS f\n",
+        "\n",
+        "LEFT JOIN `ftw-week-08`.`03_gold`.dim_taxi_zone AS z\n",
+        "    ON f.pickup_taxi_zone_key = z.taxi_zone_key\n",
+        "\n",
+        "WHERE f.dq_out_of_range_datetime = FALSE\n",
+        "\n",
+        "GROUP BY z.borough\n",
+        "\n",
+        "ORDER BY trip_volume DESC;"
+      ],
+      "catalog": "ftw-week-08",
+      "schema": "03_gold"
+    },
+    {
+      "name": "data_quality",
+      "displayName": "Data Quality Summary",
+      "queryLines": [
+        "-- SECTION 5: Data Quality Flags Summary\n",
+        "SELECT\n",
+        "  z.zone_name AS pickup_zone,\n",
+        "  z.borough AS pickup_borough,\n",
+        "  dt.hour_label AS pickup_hour_label,\n",
+        "  SUM(\n",
+        "    CASE\n",
+        "      WHEN f.dq_out_of_range_datetime = TRUE THEN 1\n",
+        "      ELSE 0\n",
+        "    END\n",
+        "  ) AS trips_out_of_range_datetime,\n",
+        "  SUM(\n",
+        "    CASE\n",
+        "      WHEN f.dq_invalid_trip_duration = TRUE THEN 1\n",
+        "      ELSE 0\n",
+        "    END\n",
+        "  ) AS trips_invalid_duration,\n",
+        "  SUM(\n",
+        "    CASE\n",
+        "      WHEN f.dq_zero_trip_distance = TRUE THEN 1\n",
+        "      ELSE 0\n",
+        "    END\n",
+        "  ) AS trips_zero_distance,\n",
+        "  SUM(\n",
+        "    CASE\n",
+        "      WHEN f.dq_extreme_trip_distance = TRUE THEN 1\n",
+        "      ELSE 0\n",
+        "    END\n",
+        "  ) AS trips_extreme_distance,\n",
+        "  COUNT(*) AS total_trips\n",
+        "FROM\n",
+        "  fact_green_taxi_trip AS f\n",
+        "    INNER JOIN dim_taxi_zone AS z\n",
+        "      ON f.pickup_taxi_zone_key = z.taxi_zone_key\n",
+        "    INNER JOIN dim_time AS dt\n",
+        "      ON f.pickup_time_key = dt.time_key\n",
+        "WHERE\n",
+        "  f.dq_out_of_range_datetime = TRUE\n",
+        "  OR f.dq_invalid_trip_duration = TRUE\n",
+        "  OR f.dq_zero_trip_distance = TRUE\n",
+        "  OR f.dq_extreme_trip_distance = TRUE\n",
+        "GROUP BY\n",
+        "  z.zone_name,\n",
+        "  z.borough,\n",
+        "  dt.hour_label\n",
+        "ORDER BY\n",
+        "  total_trips DESC\n",
+        "LIMIT 50"
+      ],
+      "catalog": "ftw-week-08",
+      "schema": "03_gold"
+    },
+    {
+      "name": "weekend_weekday",
+      "displayName": "Weekend vs Weekday Comparison",
+      "queryLines": [
+        "-- SECTION 5: Weekend vs Weekday Comparison\n",
+        "SELECT\n",
+        "  CASE\n",
+        "    WHEN dd.is_weekend = TRUE THEN 'Weekend'\n",
+        "    ELSE 'Weekday'\n",
+        "  END AS day_type,\n",
+        "  COUNT(*) AS trip_volume,\n",
+        "  ROUND(SUM(f.total_amount), 2) AS total_fare_revenue,\n",
+        "  ROUND(AVG(f.trip_duration_minutes), 2) AS avg_trip_duration_minutes,\n",
+        "  ROUND(AVG(f.trip_distance), 2) AS avg_trip_distance_miles,\n",
+        "  ROUND(AVG(f.total_amount), 2) AS avg_fare_per_trip\n",
+        "FROM\n",
+        "  fact_green_taxi_trip AS f\n",
+        "    INNER JOIN dim_date AS dd\n",
+        "      ON f.pickup_date_key = dd.date_key\n",
+        "GROUP BY\n",
+        "  CASE\n",
+        "    WHEN dd.is_weekend = TRUE THEN 'Weekend'\n",
+        "    ELSE 'Weekday'\n",
+        "  END\n",
+        "ORDER BY\n",
+        "  day_type"
+      ],
+      "catalog": "ftw-week-08",
+      "schema": "03_gold"
+    },
+    {
+      "name": "monthly_volume",
+      "displayName": "Monthly Trip Volume",
+      "queryLines": [
+        "SELECT\n",
+        "  DATE_TRUNC('MONTH', dd.full_date) as trip_month,\n",
+        "  COUNT(*) as trip_volume,\n",
+        "  ROUND(SUM(f.total_amount), 2) as total_fare_revenue\n",
+        "FROM\n",
+        "  `ftw-week-08`.`03_gold`.fact_green_taxi_trip AS f\n",
+        "    INNER JOIN `ftw-week-08`.`03_gold`.dim_date AS dd\n",
+        "      ON f.pickup_date_key = dd.date_key\n",
+        "WHERE\n",
+        "  dd.full_date >= '2026-03-01'\n",
+        "  AND dd.full_date < '2026-10-01'\n",
+        "GROUP BY\n",
+        "  DATE_TRUNC('MONTH', dd.full_date)\n",
+        "ORDER BY\n",
+        "  trip_month"
+      ]
+    },
+    {
+      "name": "zone_hour_volume",
+      "displayName": "Zone x Hour Pickup Volume Matrix",
+      "queryLines": [
+        "WITH zone_totals AS (\n",
+        "    SELECT\n",
+        "        pickup_zone,\n",
+        "        SUM(trip_volume) AS total_zone_volume\n",
+        "    FROM `ftw-week-08`.`03_gold`.analytics_taxi_demand\n",
+        "    GROUP BY pickup_zone\n",
+        "    ORDER BY total_zone_volume DESC\n",
+        "    LIMIT 20\n",
+        ")\n",
+        "\n",
+        "SELECT\n",
+        "    a.pickup_zone,\n",
+        "    a.pickup_hour_24,\n",
+        "    a.pickup_hour_label,\n",
+        "    SUM(a.trip_volume) AS trip_volume\n",
+        "\n",
+        "FROM `ftw-week-08`.`03_gold`.analytics_taxi_demand AS a\n",
+        "\n",
+        "INNER JOIN zone_totals AS z\n",
+        "    ON a.pickup_zone = z.pickup_zone\n",
+        "\n",
+        "GROUP BY\n",
+        "    a.pickup_zone,\n",
+        "    a.pickup_hour_24,\n",
+        "    a.pickup_hour_label\n",
+        "\n",
+        "ORDER BY a.pickup_zone, a.pickup_hour_24;"
+      ]
+    },
+    {
+      "name": "top_zones_activity",
+      "displayName": "Top 15 Zones Pickup and Dropoff Activity",
+      "queryLines": [
+        "WITH pickup_metrics AS (\n",
+        "  SELECT\n",
+        "    f.pickup_taxi_zone_key AS taxi_zone_key,\n",
+        "    COUNT(*) AS pickup_trip_volume\n",
+        "  FROM\n",
+        "    `ftw-week-08`.`03_gold`.fact_green_taxi_trip AS f\n",
+        "  WHERE\n",
+        "    f.dq_out_of_range_datetime = FALSE\n",
+        "  GROUP BY\n",
+        "    f.pickup_taxi_zone_key\n",
+        "),\n",
+        "dropoff_metrics AS (\n",
+        "  SELECT\n",
+        "    dropoff_taxi_zone_key AS taxi_zone_key,\n",
+        "    COUNT(*) AS dropoff_trip_volume\n",
+        "  FROM\n",
+        "    `ftw-week-08`.`03_gold`.fact_green_taxi_trip\n",
+        "  WHERE\n",
+        "    dq_out_of_range_datetime = FALSE\n",
+        "  GROUP BY\n",
+        "    dropoff_taxi_zone_key\n",
+        ")\n",
+        "SELECT\n",
+        "  z.zone_name,\n",
+        "  COALESCE(p.pickup_trip_volume, 0) AS pickup_trip_volume,\n",
+        "  COALESCE(d.dropoff_trip_volume, 0) AS dropoff_trip_volume\n",
+        "FROM\n",
+        "  pickup_metrics AS p\n",
+        "    FULL OUTER JOIN dropoff_metrics AS d\n",
+        "      ON p.taxi_zone_key <=> d.taxi_zone_key\n",
+        "    LEFT JOIN `ftw-week-08`.`03_gold`.dim_taxi_zone AS z\n",
+        "      ON COALESCE(p.taxi_zone_key, d.taxi_zone_key) = z.taxi_zone_key\n",
+        "ORDER BY\n",
+        "  COALESCE(p.pickup_trip_volume, 0) DESC\n",
+        "LIMIT 15"
+      ]
+    },
+    {
+      "name": "top_weather_zones",
+      "displayName": "Top 10 Zones by Adverse Weather Pickup Share",
+      "queryLines": [
+        "WITH pickup_metrics AS (\n",
+        "  SELECT\n",
+        "    f.pickup_taxi_zone_key AS taxi_zone_key,\n",
+        "    COUNT(*) AS pickup_trip_volume,\n",
+        "    SUM(\n",
+        "      CASE\n",
+        "        WHEN\n",
+        "          w.weather_code IN (\n",
+        "            51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 71, 73, 75, 77, 80, 81, 82, 85, 86, 95, 96, 99\n",
+        "          )\n",
+        "        THEN\n",
+        "          1\n",
+        "        ELSE 0\n",
+        "      END\n",
+        "    ) AS adverse_weather_pickups,\n",
+        "    SUM(\n",
+        "      CASE\n",
+        "        WHEN w.weather_code IN (0, 1, 2, 3) THEN 1\n",
+        "        ELSE 0\n",
+        "      END\n",
+        "    ) AS clear_or_cloudy_pickups\n",
+        "  FROM\n",
+        "    `ftw-week-08`.`03_gold`.fact_green_taxi_trip AS f\n",
+        "      LEFT JOIN `ftw-week-08`.`03_gold`.dim_weather_hour AS w\n",
+        "        ON f.pickup_weather_hour_key = w.weather_hour_key\n",
+        "  WHERE\n",
+        "    f.dq_out_of_range_datetime = FALSE\n",
+        "  GROUP BY\n",
+        "    f.pickup_taxi_zone_key\n",
+        ")\n",
+        "SELECT\n",
+        "  z.zone_name,\n",
+        "  ROUND(\n",
+        "    100.0\n",
+        "      * p.adverse_weather_pickups\n",
+        "      / NULLIF(p.adverse_weather_pickups + p.clear_or_cloudy_pickups, 0),\n",
+        "    2\n",
+        "  ) AS adverse_weather_pickup_share_pct\n",
+        "FROM\n",
+        "  pickup_metrics AS p\n",
+        "    LEFT JOIN `ftw-week-08`.`03_gold`.dim_taxi_zone AS z\n",
+        "      ON p.taxi_zone_key = z.taxi_zone_key\n",
+        "WHERE\n",
+        "  p.adverse_weather_pickups + p.clear_or_cloudy_pickups > 0\n",
+        "ORDER BY\n",
+        "  adverse_weather_pickup_share_pct DESC\n",
+        "LIMIT 10"
+      ]
+    },
+    {
+      "name": "17a489e6",
+      "displayName": "Pearson correlation",
+      "queryLines": [
+        "WITH pickup_metrics AS (\r\n",
+        "    SELECT\r\n",
+        "        f.pickup_taxi_zone_key AS taxi_zone_key,\r\n",
+        "\r\n",
+        "        COUNT(*) AS pickup_trip_volume,\r\n",
+        "        COUNT(DISTINCT TO_DATE(f.pickup_datetime)) AS active_pickup_days,\r\n",
+        "\r\n",
+        "        AVG(f.trip_duration_minutes) AS avg_trip_duration_minutes,\r\n",
+        "        AVG(f.trip_distance) AS avg_trip_distance_miles,\r\n",
+        "\r\n",
+        "        SUM(f.total_amount) AS total_trip_amount,\r\n",
+        "        AVG(f.total_amount) AS avg_trip_amount,\r\n",
+        "\r\n",
+        "        SUM(\r\n",
+        "            CASE\r\n",
+        "                WHEN w.weather_code IN (\r\n",
+        "                    51, 53, 55, 56, 57,\r\n",
+        "                    61, 63, 65, 66, 67,\r\n",
+        "                    71, 73, 75, 77,\r\n",
+        "                    80, 81, 82,\r\n",
+        "                    85, 86,\r\n",
+        "                    95, 96, 99\r\n",
+        "                )\r\n",
+        "                THEN 1\r\n",
+        "                ELSE 0\r\n",
+        "            END\r\n",
+        "        ) AS adverse_weather_pickups,\r\n",
+        "\r\n",
+        "        SUM(\r\n",
+        "            CASE\r\n",
+        "                WHEN w.weather_code IN (0, 1, 2, 3)\r\n",
+        "                THEN 1\r\n",
+        "                ELSE 0\r\n",
+        "            END\r\n",
+        "        ) AS clear_or_cloudy_pickups\r\n",
+        "\r\n",
+        "    FROM `ftw-week-08`.`03_gold`.fact_green_taxi_trip AS f\r\n",
+        "\r\n",
+        "    LEFT JOIN `ftw-week-08`.`03_gold`.dim_weather_hour AS w\r\n",
+        "        ON f.pickup_weather_hour_key = w.weather_hour_key\r\n",
+        "\r\n",
+        "    WHERE f.dq_out_of_range_datetime = FALSE\r\n",
+        "\r\n",
+        "    GROUP BY f.pickup_taxi_zone_key\r\n",
+        "),\r\n",
+        "\r\n",
+        "dropoff_metrics AS (\r\n",
+        "    SELECT\r\n",
+        "        f.dropoff_taxi_zone_key AS taxi_zone_key,\r\n",
+        "        COUNT(*) AS dropoff_trip_volume\r\n",
+        "\r\n",
+        "    FROM `ftw-week-08`.`03_gold`.fact_green_taxi_trip AS f\r\n",
+        "\r\n",
+        "    WHERE f.dq_out_of_range_datetime = FALSE\r\n",
+        "\r\n",
+        "    GROUP BY f.dropoff_taxi_zone_key\r\n",
+        "),\r\n",
+        "\r\n",
+        "zone_metrics AS (\r\n",
+        "    SELECT\r\n",
+        "        p.taxi_zone_key,\r\n",
+        "\r\n",
+        "        p.pickup_trip_volume,\r\n",
+        "        COALESCE(d.dropoff_trip_volume, 0) AS dropoff_trip_volume,\r\n",
+        "\r\n",
+        "        p.active_pickup_days,\r\n",
+        "        p.avg_trip_duration_minutes,\r\n",
+        "        p.avg_trip_distance_miles,\r\n",
+        "        p.total_trip_amount,\r\n",
+        "        p.avg_trip_amount,\r\n",
+        "\r\n",
+        "        100.0 * p.adverse_weather_pickups /\r\n",
+        "        NULLIF(\r\n",
+        "            p.adverse_weather_pickups + p.clear_or_cloudy_pickups,\r\n",
+        "            0\r\n",
+        "        ) AS adverse_weather_pickup_share_pct\r\n",
+        "\r\n",
+        "    FROM pickup_metrics AS p\r\n",
+        "\r\n",
+        "    LEFT JOIN dropoff_metrics AS d\r\n",
+        "        ON p.taxi_zone_key <=> d.taxi_zone_key\r\n",
+        "),\r\n",
+        "\r\n",
+        "correlations AS (\r\n",
+        "\r\n",
+        "    SELECT\r\n",
+        "        'Pickup volume vs Drop-off volume' AS relationship,\r\n",
+        "        CORR(pickup_trip_volume, dropoff_trip_volume) AS pearson\r\n",
+        "    FROM zone_metrics\r\n",
+        "\r\n",
+        "    UNION ALL\r\n",
+        "\r\n",
+        "    SELECT\r\n",
+        "        'Pickup volume vs Average duration',\r\n",
+        "        CORR(pickup_trip_volume, avg_trip_duration_minutes)\r\n",
+        "    FROM zone_metrics\r\n",
+        "\r\n",
+        "    UNION ALL\r\n",
+        "\r\n",
+        "    SELECT\r\n",
+        "        'Pickup volume vs Average distance',\r\n",
+        "        CORR(pickup_trip_volume, avg_trip_distance_miles)\r\n",
+        "    FROM zone_metrics\r\n",
+        "\r\n",
+        "    UNION ALL\r\n",
+        "\r\n",
+        "    SELECT\r\n",
+        "        'Pickup volume vs Average trip amount',\r\n",
+        "        CORR(pickup_trip_volume, avg_trip_amount)\r\n",
+        "    FROM zone_metrics\r\n",
+        "\r\n",
+        "    UNION ALL\r\n",
+        "\r\n",
+        "    SELECT\r\n",
+        "        'Pickup volume vs Adverse-weather share',\r\n",
+        "        CORR(pickup_trip_volume, adverse_weather_pickup_share_pct)\r\n",
+        "    FROM zone_metrics\r\n",
+        "\r\n",
+        "    UNION ALL\r\n",
+        "\r\n",
+        "    SELECT\r\n",
+        "        'Drop-off volume vs Average trip amount',\r\n",
+        "        CORR(dropoff_trip_volume, avg_trip_amount)\r\n",
+        "    FROM zone_metrics\r\n",
+        "\r\n",
+        "    UNION ALL\r\n",
+        "\r\n",
+        "    SELECT\r\n",
+        "        'Average distance vs Average duration',\r\n",
+        "        CORR(avg_trip_distance_miles, avg_trip_duration_minutes)\r\n",
+        "    FROM zone_metrics\r\n",
+        "\r\n",
+        "    UNION ALL\r\n",
+        "\r\n",
+        "    SELECT\r\n",
+        "        'Average duration vs Average trip amount',\r\n",
+        "        CORR(avg_trip_duration_minutes, avg_trip_amount)\r\n",
+        "    FROM zone_metrics\r\n",
+        ")\r\n",
+        "\r\n",
+        "SELECT\r\n",
+        "    relationship,\r\n",
+        "    ROUND(pearson, 3) AS pearson\r\n",
+        "FROM correlations\r\n",
+        "ORDER BY ABS(pearson) DESC;"
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "name": "global_filters",
+      "displayName": "Global Filters",
+      "layout": [
+        {
+          "widget": {
+            "name": "filter_date",
+            "queries": [
+              {
+                "name": "dashboards/01f1afe2deb4159fbb6c46410f1f61f6/datasets/01f1b1e04c5e1176a73e1a5ed009acbe_pickup_date",
+                "query": {
+                  "datasetName": "taxi_demand",
+                  "fields": [
+                    {
+                      "name": "pickup_date",
+                      "expression": "`pickup_date`"
+                    },
+                    {
+                      "name": "pickup_date_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "showTitle": true,
+                "title": "Pickup Date Range"
+              },
+              "widgetType": "filter-date-range-picker",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "pickup_date",
+                    "queryName": "dashboards/01f1afe2deb4159fbb6c46410f1f61f6/datasets/01f1b1e04c5e1176a73e1a5ed009acbe_pickup_date"
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 6,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "filter_day",
+            "queries": [
+              {
+                "name": "dashboards/01f1afe2deb4159fbb6c46410f1f61f6/datasets/01f1b1e04c5e1176a73e1a5ed009acbe_pickup_day_name",
+                "query": {
+                  "datasetName": "taxi_demand",
+                  "fields": [
+                    {
+                      "name": "pickup_day_name",
+                      "expression": "`pickup_day_name`"
+                    },
+                    {
+                      "name": "pickup_day_name_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "showTitle": true,
+                "title": "Day of Week"
+              },
+              "widgetType": "filter-multi-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "pickup_day_name",
+                    "queryName": "dashboards/01f1afe2deb4159fbb6c46410f1f61f6/datasets/01f1b1e04c5e1176a73e1a5ed009acbe_pickup_day_name"
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 0,
+            "width": 6,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "filter_hour",
+            "queries": [
+              {
+                "name": "dashboards/01f1afe2deb4159fbb6c46410f1f61f6/datasets/01f1b1e04c5e1176a73e1a5ed009acbe_pickup_hour_24",
+                "query": {
+                  "datasetName": "taxi_demand",
+                  "fields": [
+                    {
+                      "name": "pickup_hour_24",
+                      "expression": "`pickup_hour_24`"
+                    },
+                    {
+                      "name": "pickup_hour_24_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Pickup Hour",
+                  "fields": []
+                }
+              },
+              "widgetType": "filter-multi-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "pickup_hour_24",
+                    "queryName": "dashboards/01f1afe2deb4159fbb6c46410f1f61f6/datasets/01f1b1e04c5e1176a73e1a5ed009acbe_pickup_hour_24"
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 6,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "filter_borough",
+            "queries": [
+              {
+                "name": "dashboards/01f1afe2deb4159fbb6c46410f1f61f6/datasets/01f1b1e04c5e1176a73e1a5ed009acbe_pickup_borough",
+                "query": {
+                  "datasetName": "taxi_demand",
+                  "fields": [
+                    {
+                      "name": "pickup_borough",
+                      "expression": "`pickup_borough`"
+                    },
+                    {
+                      "name": "pickup_borough_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "showTitle": true,
+                "title": "Pickup Borough"
+              },
+              "widgetType": "filter-multi-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "pickup_borough",
+                    "queryName": "dashboards/01f1afe2deb4159fbb6c46410f1f61f6/datasets/01f1b1e04c5e1176a73e1a5ed009acbe_pickup_borough"
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 2,
+            "width": 6,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "filter_zone",
+            "queries": [
+              {
+                "name": "dashboards/01f1afe2deb4159fbb6c46410f1f61f6/datasets/01f1b1e04c5e1176a73e1a5ed009acbe_pickup_zone",
+                "query": {
+                  "datasetName": "taxi_demand",
+                  "fields": [
+                    {
+                      "name": "pickup_zone",
+                      "expression": "`pickup_zone`"
+                    },
+                    {
+                      "name": "pickup_zone_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "showTitle": true,
+                "title": "Pickup Zone"
+              },
+              "widgetType": "filter-multi-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "pickup_zone",
+                    "queryName": "dashboards/01f1afe2deb4159fbb6c46410f1f61f6/datasets/01f1b1e04c5e1176a73e1a5ed009acbe_pickup_zone"
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 4,
+            "width": 6,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "filter_weather",
+            "queries": [
+              {
+                "name": "dashboards/01f1afe2deb4159fbb6c46410f1f61f6/datasets/01f1b1e04d671e3bb545f7cf5f6adb88_weather_condition",
+                "query": {
+                  "datasetName": "weather_behavior",
+                  "fields": [
+                    {
+                      "name": "weather_condition",
+                      "expression": "`weather_condition`"
+                    },
+                    {
+                      "name": "weather_condition_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "showTitle": true,
+                "title": "Weather Condition"
+              },
+              "widgetType": "filter-multi-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "weather_condition",
+                    "queryName": "dashboards/01f1afe2deb4159fbb6c46410f1f61f6/datasets/01f1b1e04d671e3bb545f7cf5f6adb88_weather_condition"
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 4,
+            "width": 6,
+            "height": 2
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_GLOBAL_FILTERS",
+      "layoutVersion": "GRID_V1"
+    },
+    {
+      "name": "main_dashboard",
+      "displayName": "Overview",
+      "layout": [
+        {
+          "widget": {
+            "name": "kpi_total_trips",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "kpi_overview",
+                  "fields": [
+                    {
+                      "name": "total_trips",
+                      "expression": "`total_trips`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Total Trips"
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "total_trips"
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 4,
+            "width": 3,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_fare_revenue",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "kpi_overview",
+                  "fields": [
+                    {
+                      "name": "total_fare_revenue",
+                      "expression": "`total_fare_revenue`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Total Trip Revenue",
+                  "fields": []
+                }
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "total_fare_revenue"
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 4,
+            "width": 3,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_avg_duration",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "kpi_overview",
+                  "fields": [
+                    {
+                      "name": "avg_trip_duration_minutes",
+                      "expression": "`avg_trip_duration_minutes`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Avg Trip Duration (min)"
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "avg_trip_duration_minutes"
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 4,
+            "width": 2,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_avg_distance",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "kpi_overview",
+                  "fields": [
+                    {
+                      "name": "avg_trip_distance_miles",
+                      "expression": "`avg_trip_distance_miles`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Avg Trip Distance (mi)"
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "avg_trip_distance_miles"
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 8,
+            "y": 4,
+            "width": 2,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_weather_missing",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "kpi_overview",
+                  "fields": [
+                    {
+                      "name": "pct_trips_missing_weather",
+                      "expression": "`pct_trips_missing_weather`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Unknown Weather Coverage (%)"
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "pct_trips_missing_weather"
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 10,
+            "y": 4,
+            "width": 2,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "dashboard_intro",
+            "multilineTextboxSpec": {
+              "lines": [
+                "# NYC Green Taxi Demand, Weather & Mobility Analytics\n",
+                "\n",
+                "This dashboard analyzes **133,348 NYC Green Taxi trips** to answer three key business questions:\n",
+                "\n",
+                "1. **When and where is taxi demand highest?** Peak hours, days, and top pickup zones\n",
+                "2. **How does weather affect demand?** Trip behavior across Clear, Cloudy, Rain, Snow conditions\n",
+                "3. **Which zones show mobility opportunities?** Areas with strong pickup/dropoff activity"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 12,
+            "height": 4
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
+    },
+    {
+      "name": "demand_patterns",
+      "displayName": "Demand Patterns",
+      "layout": [
+        {
+          "widget": {
+            "name": "demand_day_hour_heatmap",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "demand_by_day_hour",
+                  "fields": [
+                    {
+                      "name": "trip_volume",
+                      "expression": "`trip_volume`"
+                    },
+                    {
+                      "name": "pickup_hour_label",
+                      "expression": "`pickup_hour_label`"
+                    },
+                    {
+                      "name": "pickup_day_name",
+                      "expression": "`pickup_day_name`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Which Hours and Days See the Most Demand",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "heatmap",
+              "encodings": {
+                "x": {
+                  "fieldName": "pickup_hour_label",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "pickup_day_name",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "custom-order",
+                      "orderedValues": [
+                        "Monday",
+                        "Tuesday",
+                        "Wednesday",
+                        "Thursday",
+                        "Friday",
+                        "Saturday",
+                        "Sunday"
+                      ]
+                    }
+                  }
+                },
+                "color": {
+                  "fieldName": "trip_volume",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 12,
+            "height": 9
+          }
+        },
+        {
+          "widget": {
+            "name": "top_pickup_zones",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "top_pickup_zones",
+                  "fields": [
+                    {
+                      "name": "trip_volume",
+                      "expression": "`trip_volume`"
+                    },
+                    {
+                      "name": "pickup_zone",
+                      "expression": "`pickup_zone`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Busiest Pickup Zones by Trip Volume",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "trip_volume",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "y": {
+                  "fieldName": "pickup_zone",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "x-reversed"
+                    }
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 11,
+            "width": 12,
+            "height": 8
+          }
+        },
+        {
+          "widget": {
+            "name": "19b0afec",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## <span style=\"text-align:left;display:block;\">When and Where is Taxi Demand Highest?</span>"
+              ],
+              "verticalAlign": "VERTICAL_ALIGN_CENTER"
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 12,
+            "height": 2
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
+    },
+    {
+      "name": "weather_impact",
+      "displayName": "Weather Impact",
+      "layout": [
+        {
+          "widget": {
+            "name": "section_header",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## How Weather Affects Taxi Demand and Trip Behavior"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 12,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "weather_trip_volume",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "weather_impact",
+                  "fields": [
+                    {
+                      "name": "weather_condition",
+                      "expression": "`weather_condition`"
+                    },
+                    {
+                      "name": "trip_volume",
+                      "expression": "`trip_volume`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "How Weather Conditions Affect Trip Demand",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "weather_condition",
+                  "axis": {
+                    "labelAngle": 0
+                  },
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "y-reversed"
+                    }
+                  }
+                },
+                "y": {
+                  "fieldName": "trip_volume",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 1,
+            "width": 6,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "weather_temperature",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "weather_impact",
+                  "fields": [
+                    {
+                      "name": "avg_temperature_c",
+                      "expression": "`avg_temperature_c`"
+                    },
+                    {
+                      "name": "weather_condition",
+                      "expression": "`weather_condition`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Average Temperature by Weather Condition",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "avg_temperature_c",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "y": {
+                  "fieldName": "weather_condition",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "x-reversed"
+                    }
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 1,
+            "width": 6,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "ea154e23",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "fare_per_mile_borough",
+                  "fields": [
+                    {
+                      "name": "borough",
+                      "expression": "`borough`"
+                    },
+                    {
+                      "name": "trip_volume",
+                      "expression": "`trip_volume`"
+                    },
+                    {
+                      "name": "total_distance_miles",
+                      "expression": "`total_distance_miles`"
+                    },
+                    {
+                      "name": "avg_fare_per_mile",
+                      "expression": "`avg_fare_per_mile`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Trip Volume and Fare by Borough",
+                  "fields": []
+                }
+              },
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "borough"
+                  },
+                  {
+                    "fieldName": "trip_volume"
+                  },
+                  {
+                    "fieldName": "total_distance_miles"
+                  },
+                  {
+                    "fieldName": "avg_fare_per_mile"
+                  }
+                ]
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 8,
+            "width": 12,
+            "height": 3
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
+    },
+    {
+      "name": "zone_mobility",
+      "displayName": "Zone Mobility",
+      "layout": [
+        {
+          "widget": {
+            "name": "section_header",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## Zone-Level Mobility Patterns and Opportunities"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 12,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "zone_pickup_dropoff",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "top_zones_activity",
+                  "fields": [
+                    {
+                      "name": "pickup_trip_volume",
+                      "expression": "`pickup_trip_volume`"
+                    },
+                    {
+                      "name": "dropoff_trip_volume",
+                      "expression": "`dropoff_trip_volume`"
+                    },
+                    {
+                      "name": "zone_name",
+                      "expression": "`zone_name`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Zones with Strongest Pickup and Dropoff Activity",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "mark": {
+                "colors": [
+                  "#4E79A7",
+                  "#F28E2B"
+                ],
+                "layout": "group"
+              },
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fields": [
+                    {
+                      "fieldName": "pickup_trip_volume",
+                      "displayName": "Pickups"
+                    },
+                    {
+                      "fieldName": "dropoff_trip_volume",
+                      "displayName": "Dropoffs"
+                    }
+                  ],
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "compact"
+                  }
+                },
+                "y": {
+                  "fieldName": "zone_name",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "x-reversed"
+                    }
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 6,
+            "height": 9
+          }
+        },
+        {
+          "widget": {
+            "name": "zone_hour_heatmap",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "zone_hour_volume",
+                  "fields": [
+                    {
+                      "name": "trip_volume",
+                      "expression": "`trip_volume`"
+                    },
+                    {
+                      "name": "pickup_hour_label",
+                      "expression": "`pickup_hour_label`"
+                    },
+                    {
+                      "name": "pickup_zone",
+                      "expression": "`pickup_zone`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Pickup Volume Heatmap: Zone × Hour",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "heatmap",
+              "encodings": {
+                "x": {
+                  "fieldName": "pickup_hour_label",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "pickup_zone",
+                  "displayName": "Zone",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "color": {
+                  "fieldName": "trip_volume",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "compact"
+                  },
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 2,
+            "width": 6,
+            "height": 9
+          }
+        },
+        {
+          "widget": {
+            "name": "key-metric-correlations-pearson-score",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "17a489e6",
+                  "fields": [
+                    {
+                      "name": "pearson",
+                      "expression": "`pearson`"
+                    },
+                    {
+                      "name": "relationship",
+                      "expression": "`relationship`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Key Metric Correlations (Pearson Score)",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "pearson",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "y": {
+                  "fieldName": "relationship",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "color": {
+                  "fieldName": "pearson",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 2
+                    }
+                  },
+                  "legend": {
+                    "position": "right"
+                  },
+                  "scale": {
+                    "type": "quantitative",
+                    "colorRamp": {
+                      "mode": "scheme",
+                      "scheme": "redyellowblue"
+                    }
+                  }
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 11,
+            "width": 12,
+            "height": 7
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
+    }
+  ],
+  "uiSettings": {
+    "theme": {
+      "canvasBackgroundColor": {
+        "light": "#F6FAFB",
+        "dark": "#1B1F23"
+      },
+      "widgetBackgroundColor": {
+        "light": "#FFFFFF",
+        "dark": "#2A2F35"
+      },
+      "widgetBorderColor": {
+        "light": "#D7E1E9",
+        "dark": "#3C444C"
+      },
+      "fontColor": {
+        "light": "#374151",
+        "dark": "#E4E9EE"
+      },
+      "selectionColor": {
+        "light": "#5FA8D3",
+        "dark": "#5FA8D3"
+      },
+      "visualizationColors": [
+        "#5FA8D3",
+        "#70BEE1",
+        "#89CCE7",
+        "#A1DAEC",
+        "#B3E6DC",
+        "#89C7A8",
+        "#6EAD80",
+        "#589F60",
+        "#478743",
+        "#356C2A"
+      ],
+      "widgetHeaderAlignment": "LEFT"
+    },
+    "applyModeEnabled": false
+  }
+}

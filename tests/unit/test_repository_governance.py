@@ -36,6 +36,9 @@ class RepositoryGovernanceTests(unittest.TestCase):
         job = (
             REPO_ROOT / "resources/nyc_mobility_job.yml"
         ).read_text()
+        dashboards = (
+            REPO_ROOT / "resources/nyc_mobility_dashboard.yml"
+        ).read_text()
 
         self.assertRegex(bundle, r"prod:\s+mode: production")
         task_count = len(
@@ -44,9 +47,44 @@ class RepositoryGovernanceTests(unittest.TestCase):
         timeout_count = len(
             re.findall(r"^\s+timeout_seconds:", job, re.MULTILINE)
         )
-        self.assertEqual(task_count, 16)
+        self.assertEqual(task_count, 18)
         self.assertEqual(timeout_count, task_count + 1)
         self.assertEqual(job.count("max_retries:"), 2)
+        self.assertIn("- task_key: refresh_quality_dashboard", job)
+        self.assertIn("- task_key: refresh_analytics_dashboard", job)
+        self.assertIn("- task_key: consolidated_quality_gate", job)
+        self.assertIn(
+            "dashboard_id: "
+            "${resources.dashboards.nyc_mobility_quality_dashboard.id}",
+            job,
+        )
+        self.assertIn(
+            "dashboard_id: "
+            "${resources.dashboards.nyc_mobility_analytics_dashboard.id}",
+            job,
+        )
+        self.assertIn("warehouse_id: ${var.warehouse_id}", job)
+        self.assertIn(
+            "file_path: "
+            "../dashboard/data_quality/nyc_mobility_quality.lvdash.json",
+            dashboards,
+        )
+        self.assertIn(
+            "file_path: "
+            "../dashboard/business_analytics/"
+            "nyc_mobility_analytics.lvdash.json",
+            dashboards,
+        )
+
+    def test_dashboard_changes_trigger_both_deployment_workflows(self):
+        for workflow_path in (
+            ".github/workflows/deploy-databricks.yml",
+            ".github/workflows/deploy-databricks-preview.yml",
+        ):
+            with self.subTest(path=workflow_path):
+                workflow = (REPO_ROOT / workflow_path).read_text()
+                self.assertIn("- dashboard/**", workflow)
+                self.assertNotIn("- dashboards/**", workflow)
 
     def test_only_one_end_to_end_gate_is_executable(self):
         gates = sorted(

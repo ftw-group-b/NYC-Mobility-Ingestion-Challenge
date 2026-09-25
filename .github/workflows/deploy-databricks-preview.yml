@@ -10,6 +10,7 @@ on:
       - notebooks/**
       - src/**
       - tests/**
+      - dashboard/**
       - .github/workflows/deploy-databricks-preview.yml
 
 permissions:
@@ -24,6 +25,7 @@ env:
   DATABRICKS_HOST: ${{ vars.DATABRICKS_HOST }}
   DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
   BUNDLE_VAR_alert_email: ${{ vars.DATABRICKS_ALERT_EMAIL }}
+  BUNDLE_VAR_warehouse_id: ${{ vars.DATABRICKS_WAREHOUSE_ID }}
 
 jobs:
   deploy-preview:
@@ -54,6 +56,11 @@ jobs:
 
           if [ -z "${BUNDLE_VAR_alert_email:-}" ]; then
             echo "Missing GitHub environment variable: DATABRICKS_ALERT_EMAIL"
+            exit 1
+          fi
+
+          if [ -z "${BUNDLE_VAR_warehouse_id:-}" ]; then
+            echo "Missing GitHub environment variable: DATABRICKS_WAREHOUSE_ID"
             exit 1
           fi
 

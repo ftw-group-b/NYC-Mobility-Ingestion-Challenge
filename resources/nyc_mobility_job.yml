@@ -5,7 +5,7 @@ resources:
       description: >-
         Runs the approved incremental ingestion, Bronze, Silver, Gold,
         business analytics, data-quality monitoring, analytics validation,
-        and consolidated quality gate in dependency order.
+        consolidated quality gate, and dashboard refreshes in dependency order.
 
       max_concurrent_runs: 1
       timeout_seconds: 7200
@@ -13,7 +13,7 @@ resources:
       email_notifications:
         on_failure:
           - ${var.alert_email}
-      
+
       notification_settings:
         no_alert_for_skipped_runs: true
         no_alert_for_canceled_runs: true
@@ -154,6 +154,22 @@ resources:
             notebook_path: ../tests/end_to_end/02_great_expectations_quality_gate.ipynb
             source: WORKSPACE
           environment_key: gx_environment
+
+        - task_key: refresh_quality_dashboard
+          timeout_seconds: 900
+          depends_on:
+            - task_key: consolidated_quality_gate
+          dashboard_task:
+            dashboard_id: ${resources.dashboards.nyc_mobility_quality_dashboard.id}
+            warehouse_id: ${var.warehouse_id}
+
+        - task_key: refresh_analytics_dashboard
+          timeout_seconds: 900
+          depends_on:
+            - task_key: consolidated_quality_gate
+          dashboard_task:
+            dashboard_id: ${resources.dashboards.nyc_mobility_analytics_dashboard.id}
+            warehouse_id: ${var.warehouse_id}
 
       environments:
         - environment_key: gx_environment
