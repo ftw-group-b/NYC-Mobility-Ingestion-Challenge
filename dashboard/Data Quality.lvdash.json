@@ -1,0 +1,975 @@
+{
+  "datasets": [
+    {
+      "name": "bbd16020",
+      "displayName": "Timestamp",
+      "config": {
+        "version": "1.1",
+        "source": "SELECT\r\n  concat(\r\n    'Refreshed: ',\r\n    date_format(\r\n      from_utc_timestamp(current_timestamp(), 'Asia/Manila'),\r\n      'MMMM dd, yyyy hh:mm a'\r\n    )\r\n  ) AS last_refreshed",
+        "dimensions": [
+          {
+            "expr": "source.*"
+          }
+        ],
+        "measures": [
+          {
+            "name": "count",
+            "expr": "COUNT(*)",
+            "comment": "Represents the total number of rows in the dataset. Use this measure to count all",
+            "displayName": "Count"
+          }
+        ]
+      }
+    },
+    {
+      "name": "9f7cb49a",
+      "displayName": "DQ-Checks",
+      "queryLines": [
+        "SELECT\n",
+        "  check_name,\n",
+        "  quality_dimension,\n",
+        "  flagged_rows,\n",
+        "  total_rows,\n",
+        "  flagged_pct\n",
+        "FROM\n",
+        "  `ftw-week-08`.`03_gold`.dq_dashboard_check_scores\n",
+        "ORDER BY\n",
+        "  flagged_rows DESC"
+      ]
+    },
+    {
+      "name": "6ec2a3c0",
+      "displayName": "Referential Integrity Overview",
+      "queryLines": [
+        "SELECT\n",
+        "  missing_pickup_date_keys,\n",
+        "  missing_dropoff_date_keys,\n",
+        "  missing_pickup_time_keys,\n",
+        "  missing_dropoff_time_keys,\n",
+        "  missing_pickup_zone_keys,\n",
+        "  missing_dropoff_zone_keys,\n",
+        "  missing_weather_keys,\n",
+        "  joined_rows,\n",
+        "  fact_rows,\n",
+        "  join_row_difference\n",
+        "FROM\n",
+        "  `ftw-week-08`.`03_gold`.dq_dashboard_referential_integrity"
+      ]
+    },
+    {
+      "name": "9bdd8548",
+      "displayName": "Clean Record Rate",
+      "config": {
+        "version": "1.1",
+        "source": "SELECT\r\n  clean_row_pct,\r\n  clean_rows,\r\n  total_rows,\r\n  rows_with_any_dq_flag,\r\n  last_checked_at\r\nFROM `ftw-week-08`.`03_gold`.dq_dashboard_overview\r\n",
+        "dimensions": [
+          {
+            "expr": "source.*"
+          }
+        ],
+        "measures": [
+          {
+            "name": "count",
+            "expr": "COUNT(*)",
+            "comment": "Represents the total number of rows in the dataset. Use this measure to count all",
+            "displayName": "Count"
+          }
+        ]
+      }
+    },
+    {
+      "name": "7faddbfa",
+      "displayName": "Critical Integrity Failures",
+      "config": {
+        "version": "1.1",
+        "source": "SELECT\r\n  (rows_with_orphaned_fk + null_trip_key_count) AS critical_integrity_failures,\r\n  rows_with_orphaned_fk AS orphaned_foreign_keys,\r\n  null_trip_key_count AS null_primary_keys\r\nFROM `ftw-week-08`.`03_gold`.dq_dashboard_overview\r\n",
+        "dimensions": [
+          {
+            "expr": "source.*"
+          }
+        ],
+        "measures": [
+          {
+            "name": "count",
+            "expr": "COUNT(*)",
+            "comment": "Represents the total number of rows in the dataset. Use this measure to count all",
+            "displayName": "Count"
+          }
+        ]
+      }
+    },
+    {
+      "name": "0f6d0aee",
+      "displayName": "Clean vs. Flagged Split",
+      "config": {
+        "version": "1.1",
+        "source": "SELECT \r\n  'Clean Records' AS record_status, \r\n  clean_rows AS record_count\r\nFROM `ftw-week-08`.`03_gold`.dq_dashboard_overview\r\n\r\nUNION ALL\r\n\r\nSELECT \r\n  'Flagged Records' AS record_status, \r\n  rows_with_any_dq_flag AS record_count\r\nFROM `ftw-week-08`.`03_gold`.dq_dashboard_overview\r\n",
+        "dimensions": [
+          {
+            "expr": "source.*"
+          }
+        ],
+        "measures": [
+          {
+            "name": "count",
+            "expr": "COUNT(*)",
+            "comment": "Represents the total number of rows in the dataset. Use this measure to count all",
+            "displayName": "Count"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ba3d9989",
+      "displayName": "DQ Dimension Scores",
+      "config": {
+        "version": "1.1",
+        "source": "SELECT\r\n  quality_dimension,\r\n  flagged_rows,\r\n  total_rows,\r\n  flagged_pct,\r\n  checks_in_dimension\r\nFROM `ftw-week-08`.`03_gold`.dq_dashboard_dimension_scores\r\nORDER BY flagged_pct DESC\r\n",
+        "dimensions": [
+          {
+            "expr": "source.*"
+          }
+        ],
+        "measures": [
+          {
+            "name": "count",
+            "expr": "COUNT(*)",
+            "comment": "Represents the total number of rows in the dataset. Use this measure to count all",
+            "displayName": "Count"
+          }
+        ]
+      }
+    },
+    {
+      "name": "2dbdcab4",
+      "displayName": "Top Failing Rules",
+      "config": {
+        "version": "1.1",
+        "source": "SELECT\r\n  check_name,\r\n  quality_dimension,\r\n  flagged_rows,\r\n  flagged_pct\r\nFROM `ftw-week-08`.`03_gold`.dq_dashboard_check_scores\r\nWHERE flagged_rows > 0\r\n",
+        "dimensions": [
+          {
+            "expr": "source.*"
+          }
+        ],
+        "measures": [
+          {
+            "name": "count",
+            "expr": "COUNT(*)",
+            "comment": "Represents the total number of rows in the dataset. Use this measure to count all",
+            "displayName": "Count"
+          }
+        ]
+      }
+    },
+    {
+      "name": "700b943a",
+      "displayName": "Zone Anomaly Hotspots",
+      "config": {
+        "version": "1.1",
+        "source": "SELECT\r\n  zone_name,\r\n  CASE \r\n    WHEN borough IN ('N/A', 'Unknown', 'Unknown Borough') OR borough IS NULL \r\n      THEN 'Unmapped / Out of Area'\r\n    ELSE borough \r\n  END AS borough,\r\n  total_pickups,\r\n  flagged_pickups,\r\n  flagged_pct\r\nFROM `ftw-week-08`.`03_gold`.dq_dashboard_zone_hotspots\r\nWHERE total_pickups >= 100\r\nORDER BY flagged_pct DESC\r\nLIMIT 10",
+        "dimensions": [
+          {
+            "expr": "source.*"
+          }
+        ],
+        "measures": [
+          {
+            "name": "count",
+            "expr": "COUNT(*)",
+            "comment": "Represents the total number of rows in the dataset. Use this measure to count all",
+            "displayName": "Count"
+          }
+        ]
+      }
+    },
+    {
+      "name": "9e3b70c6",
+      "displayName": "Referential Integrity Metrics for Taxi Trip Data Analysis",
+      "queryLines": [
+        "SELECT\n",
+        "  trip_key,\n",
+        "  pickup_datetime,\n",
+        "  dropoff_datetime,\n",
+        "  pickup_taxi_zone_key,\n",
+        "  dropoff_taxi_zone_key,\n",
+        "  dq_zero_trip_distance,\n",
+        "  dq_extreme_trip_distance,\n",
+        "  dq_negative_trip_distance,\n",
+        "  dq_invalid_trip_duration,\n",
+        "  dq_missing_weather_coverage,\n",
+        "  dq_unmapped_pickup_zone,\n",
+        "  dq_null_trip_key,\n",
+        "  dq_duplicate_trip_key,\n",
+        "  source_file,\n",
+        "  batch_id\n",
+        "FROM\n",
+        "  `ftw-week-08`.`03_gold`.dq_dashboard_problem_areas\n",
+        "LIMIT 1000"
+      ]
+    },
+    {
+      "name": "f181fead",
+      "displayName": "Foreign Key Orphan Checks",
+      "config": {
+        "version": "1.1",
+        "source": "SELECT 'dim_date (Pickup)' AS dimension_table, missing_pickup_date_keys AS missing_keys FROM `ftw-week-08`.`03_gold`.dq_dashboard_referential_integrity\r\nUNION ALL SELECT 'dim_date (Dropoff)', missing_dropoff_date_keys FROM `ftw-week-08`.`03_gold`.dq_dashboard_referential_integrity\r\nUNION ALL SELECT 'dim_time (Pickup)', missing_pickup_time_keys FROM `ftw-week-08`.`03_gold`.dq_dashboard_referential_integrity\r\nUNION ALL SELECT 'dim_time (Dropoff)', missing_dropoff_time_keys FROM `ftw-week-08`.`03_gold`.dq_dashboard_referential_integrity\r\nUNION ALL SELECT 'dim_taxi_zone (Pickup)', missing_pickup_zone_keys FROM `ftw-week-08`.`03_gold`.dq_dashboard_referential_integrity\r\nUNION ALL SELECT 'dim_taxi_zone (Dropoff)', missing_dropoff_zone_keys FROM `ftw-week-08`.`03_gold`.dq_dashboard_referential_integrity\r\nUNION ALL SELECT 'dim_weather_hour', missing_weather_keys FROM `ftw-week-08`.`03_gold`.dq_dashboard_referential_integrity\r\n",
+        "dimensions": [
+          {
+            "expr": "source.*"
+          }
+        ],
+        "measures": [
+          {
+            "name": "count",
+            "expr": "COUNT(*)",
+            "comment": "Represents the total number of rows in the dataset. Use this measure to count all",
+            "displayName": "Count"
+          }
+        ]
+      }
+    },
+    {
+      "name": "7f1c3a1c",
+      "displayName": "Validity",
+      "config": {
+        "version": "1.1",
+        "source": "SELECT\r\n  ROUND(100.0 - flagged_pct, 2) AS validity_score_pct\r\nFROM `ftw-week-08`.`03_gold`.dq_dashboard_dimension_scores\r\nWHERE quality_dimension = 'VALIDITY'\r\n",
+        "dimensions": [
+          {
+            "expr": "source.*"
+          }
+        ],
+        "measures": [
+          {
+            "name": "count",
+            "expr": "COUNT(*)",
+            "comment": "Represents the total number of rows in the dataset. Use this measure to count all",
+            "displayName": "Count"
+          }
+        ]
+      }
+    },
+    {
+      "name": "31d8a6f9",
+      "displayName": "Completeness",
+      "config": {
+        "version": "1.1",
+        "source": "SELECT\r\n  ROUND(100.0 - flagged_pct, 2) AS completeness_score_pct\r\nFROM `ftw-week-08`.`03_gold`.dq_dashboard_dimension_scores\r\nWHERE quality_dimension = 'COMPLETENESS'\r\n",
+        "dimensions": [
+          {
+            "expr": "source.*"
+          }
+        ],
+        "measures": [
+          {
+            "name": "count",
+            "expr": "COUNT(*)",
+            "comment": "Represents the total number of rows in the dataset. Use this measure to count all",
+            "displayName": "Count"
+          }
+        ]
+      }
+    },
+    {
+      "name": "48bd5061",
+      "displayName": "Uniqueness",
+      "config": {
+        "version": "1.1",
+        "source": "SELECT\r\n  ROUND(100.0 - flagged_pct, 2) AS uniqueness_score_pct\r\nFROM `ftw-week-08`.`03_gold`.dq_dashboard_dimension_scores\r\nWHERE quality_dimension = 'UNIQUENESS'\r\n",
+        "dimensions": [
+          {
+            "expr": "source.*"
+          }
+        ],
+        "measures": [
+          {
+            "name": "count",
+            "expr": "COUNT(*)",
+            "comment": "Represents the total number of rows in the dataset. Use this measure to count all",
+            "displayName": "Count"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a7ff137e",
+      "displayName": "Referential Integrity",
+      "config": {
+        "version": "1.1",
+        "source": "SELECT\r\n  ROUND(100.0 * (total_rows - rows_with_orphaned_fk) / NULLIF(total_rows, 0), 2) AS referential_integrity_pct\r\nFROM `ftw-week-08`.`03_gold`.dq_dashboard_overview\r\n",
+        "dimensions": [
+          {
+            "expr": "source.*"
+          }
+        ],
+        "measures": [
+          {
+            "name": "count",
+            "expr": "COUNT(*)",
+            "comment": "Represents the total number of rows in the dataset. Use this measure to count all",
+            "displayName": "Count"
+          }
+        ]
+      }
+    }
+  ],
+  "pages": [
+    {
+      "name": "838a41c3",
+      "displayName": "Overall Data Quality Dashboard",
+      "layout": [
+        {
+          "widget": {
+            "name": "1e1ab7e4",
+            "multilineTextboxSpec": {
+              "lines": [
+                "# <span style=\"text-align:center;display:block\"><span style=\"font-weight:700\">NYC MOBILITY DATA QUALITY MONITORING</span></span>\n",
+                "<p>&nbsp;</p>\n"
+              ],
+              "verticalAlign": "VERTICAL_ALIGN_CENTER"
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 12,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "clean-record-rate",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "9bdd8548",
+                  "fields": [
+                    {
+                      "name": "clean_row_pct",
+                      "expression": "`clean_row_pct`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Clean Record Rate",
+                  "fields": []
+                }
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "clean_row_pct",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "none",
+                    "decimalPlaces": {
+                      "type": "exact",
+                      "places": 2
+                    },
+                    "significantFigures": {
+                      "type": "exact",
+                      "figures": 8
+                    },
+                    "hideGroupSeparator": false
+                  },
+                  "formatTemplate": "{{@formatted}}%"
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 1,
+            "width": 6,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "critical-integrity-failures",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "7faddbfa",
+                  "fields": [
+                    {
+                      "name": "avg(critical_integrity_failures)",
+                      "expression": "AVG(`critical_integrity_failures`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Critical Integrity Failures\n<p>&nbsp;</p>\n",
+                  "fields": []
+                }
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "avg(critical_integrity_failures)"
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 1,
+            "width": 6,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "clean-vs-flagged-records",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "0f6d0aee",
+                  "fields": [
+                    {
+                      "name": "sum(record_count)",
+                      "expression": "SUM(`record_count`)"
+                    },
+                    {
+                      "name": "record_status",
+                      "expression": "`record_status`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "<span style=\"font-size: 14px;\">Clean VS. Flagged Records</span>",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "pie",
+              "encodings": {
+                "angle": {
+                  "fieldName": "sum(record_count)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Number of Records"
+                },
+                "color": {
+                  "fieldName": "record_status",
+                  "scale": {
+                    "type": "categorical",
+                    "mappings": [
+                      {
+                        "value": "Flagged Records",
+                        "color": {
+                          "themeColorType": "visualizationColors",
+                          "position": 8
+                        }
+                      },
+                      {
+                        "value": "Clean Records",
+                        "color": {
+                          "themeColorType": "visualizationColors",
+                          "position": 1
+                        }
+                      }
+                    ]
+                  }
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 6,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "quality-dimension-score",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ba3d9989",
+                  "fields": [
+                    {
+                      "name": "sum(flagged_rows)",
+                      "expression": "SUM(`flagged_rows`)"
+                    },
+                    {
+                      "name": "quality_dimension",
+                      "expression": "`quality_dimension`"
+                    },
+                    {
+                      "name": "avg(flagged_pct)",
+                      "expression": "AVG(`flagged_pct`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Quality Dimension Score",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "quality_dimension",
+                  "displayName": "Quality Dimension",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "avg(flagged_pct)",
+                  "displayName": "Flagged percentage",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "label": {
+                  "show": true
+                },
+                "extra": [
+                  {
+                    "fieldName": "sum(flagged_rows)"
+                  }
+                ]
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 6,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "data-quality-violations-by-rule",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "2dbdcab4",
+                  "fields": [
+                    {
+                      "name": "check_name",
+                      "expression": "`check_name`"
+                    },
+                    {
+                      "name": "quality_dimension",
+                      "expression": "`quality_dimension`"
+                    },
+                    {
+                      "name": "flagged_rows",
+                      "expression": "`flagged_rows`"
+                    },
+                    {
+                      "name": "flagged_pct",
+                      "expression": "`flagged_pct`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "**Data Quality Violations by Rule**",
+                  "fields": []
+                }
+              },
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "check_name",
+                    "displayName": "Category Check"
+                  },
+                  {
+                    "fieldName": "quality_dimension",
+                    "displayName": "Dimension Quality"
+                  },
+                  {
+                    "fieldName": "flagged_rows",
+                    "displayName": "Flagged Rows"
+                  },
+                  {
+                    "fieldName": "flagged_pct",
+                    "displayName": "Percentage"
+                  }
+                ]
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 12,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "e2dade2b",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "700b943a",
+                  "fields": [
+                    {
+                      "name": "borough",
+                      "expression": "`borough`"
+                    },
+                    {
+                      "name": "zone_name",
+                      "expression": "`zone_name`"
+                    },
+                    {
+                      "name": "avg(flagged_pct)",
+                      "expression": "AVG(`flagged_pct`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {},
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "zone_name",
+                  "displayName": "Zone ",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "avg(flagged_pct)",
+                  "displayName": "Anomaly Rate",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "borough",
+                  "scale": {
+                    "type": "categorical",
+                    "mappings": [
+                      {
+                        "value": "Queens",
+                        "color": {
+                          "themeColorType": "visualizationColors",
+                          "position": 1
+                        }
+                      },
+                      {
+                        "value": "Unmapped / Out of Area",
+                        "color": {
+                          "themeColorType": "visualizationColors",
+                          "position": 8
+                        }
+                      }
+                    ]
+                  }
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 12,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "validity-percentage",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "7f1c3a1c",
+                  "fields": [
+                    {
+                      "name": "avg(validity_score_pct)",
+                      "expression": "AVG(`validity_score_pct`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Validity ",
+                  "fields": []
+                }
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "avg(validity_score_pct)",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "none",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 2
+                    }
+                  },
+                  "formatTemplate": "{{ @formatted }}%"
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 3,
+            "width": 3,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "completeness",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "31d8a6f9",
+                  "fields": [
+                    {
+                      "name": "avg(completeness_score_pct)",
+                      "expression": "AVG(`completeness_score_pct`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Completeness \n<p>&nbsp;</p>\n",
+                  "fields": []
+                }
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "avg(completeness_score_pct)",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "none",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 2
+                    }
+                  },
+                  "formatTemplate": "{{ @formatted }}%"
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 3,
+            "width": 3,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "uniqueness",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "48bd5061",
+                  "fields": [
+                    {
+                      "name": "avg(uniqueness_score_pct)",
+                      "expression": "AVG(`uniqueness_score_pct`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Uniqueness",
+                  "fields": []
+                }
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "avg(uniqueness_score_pct)",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "none",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 2
+                    }
+                  },
+                  "formatTemplate": "{{ @formatted }}%"
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 3,
+            "width": 3,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "referential-integrity",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "a7ff137e",
+                  "fields": [
+                    {
+                      "name": "avg(referential_integrity_pct)",
+                      "expression": "AVG(`referential_integrity_pct`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Referential Integrity",
+                  "fields": []
+                }
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "avg(referential_integrity_pct)",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "none",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 2
+                    }
+                  },
+                  "formatTemplate": "{{ @formatted }}%"
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 9,
+            "y": 3,
+            "width": 3,
+            "height": 3
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
+    }
+  ],
+  "uiSettings": {
+    "theme": {
+      "widgetHeaderAlignment": "ALIGNMENT_UNSPECIFIED"
+    },
+    "applyModeEnabled": false
+  }
+}
