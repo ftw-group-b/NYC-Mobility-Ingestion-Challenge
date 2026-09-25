@@ -44,9 +44,17 @@ class RepositoryGovernanceTests(unittest.TestCase):
         timeout_count = len(
             re.findall(r"^\s+timeout_seconds:", job, re.MULTILINE)
         )
-        self.assertEqual(task_count, 16)
+        self.assertEqual(task_count, 17)
         self.assertEqual(timeout_count, task_count + 1)
         self.assertEqual(job.count("max_retries:"), 2)
+        self.assertIn("- task_key: refresh_quality_dashboard", job)
+        self.assertIn("- task_key: consolidated_quality_gate", job)
+        self.assertIn(
+            "dashboard_id: "
+            "${resources.dashboards.nyc_mobility_quality_dashboard.id}",
+            job,
+        )
+        self.assertIn("warehouse_id: ${var.warehouse_id}", job)
 
     def test_only_one_end_to_end_gate_is_executable(self):
         gates = sorted(
