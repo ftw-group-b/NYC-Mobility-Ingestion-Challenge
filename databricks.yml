@@ -12,14 +12,14 @@ sync:
     - src/**/*.py
     - tests/**/*.ipynb
   exclude:
-    - dashboards/*.lvdash.json
+    - dashboard/**/*.lvdash.json
 
 variables:
   alert_email:
     description: Email address for failed pipeline notifications
 
   warehouse_id:
-    description: SQL warehouse used by the AI/BI dashboard
+    description: SQL warehouse used by the AI/BI dashboards
 
 targets:
   dev:
