@@ -10,6 +10,7 @@ on:
       - notebooks/**
       - src/**
       - tests/**
+      - dashboards/**
       - .github/workflows/deploy-databricks.yml
 
   workflow_dispatch:
@@ -31,6 +32,7 @@ env:
   DATABRICKS_HOST: ${{ vars.DATABRICKS_HOST }}
   DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
   BUNDLE_VAR_alert_email: ${{ vars.DATABRICKS_ALERT_EMAIL }}
+  BUNDLE_VAR_warehouse_id: ${{ vars.DATABRICKS_WAREHOUSE_ID }}
 
 jobs:
   deploy:
@@ -63,6 +65,11 @@ jobs:
             exit 1
           fi
 
+          if [ -z "${BUNDLE_VAR_warehouse_id:-}" ]; then
+            echo "Missing GitHub environment variable: DATABRICKS_WAREHOUSE_ID"
+            exit 1
+          fi
+
       - name: Install Databricks CLI
         uses: databricks/setup-cli@8821c27b1fe57472264eeb6e50c1f31d69552f28
         with:
@@ -73,6 +80,17 @@ jobs:
 
       - name: Deploy bundle
         run: databricks bundle deploy -t prod
+
+      - name: Show deployed Databricks resources
+        shell: bash
+        run: |
+          SUMMARY="$(databricks bundle summary -t prod)"
+          printf '%s\n' "$SUMMARY"
+
+          {
+            echo "## Deployed Databricks resources"
+            printf '%s\n' "$SUMMARY" | sed -E 's/^[[:space:]]+//'
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Run Source-to-Gold pipeline
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_pipeline }}
