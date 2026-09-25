@@ -73,4 +73,7 @@ jobs:
         run: databricks bundle validate -t dev
 
       - name: Deploy development bundle
-        run: databricks bundle deploy -t dev
+        # The dev dashboard source paths were corrected, so Databricks must
+        # recreate the two preview dashboards once. GitHub Actions cannot
+        # answer an interactive confirmation prompt.
+        run: databricks bundle deploy -t dev --auto-approve
