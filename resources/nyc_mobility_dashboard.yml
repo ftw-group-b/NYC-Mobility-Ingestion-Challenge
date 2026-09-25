@@ -1,0 +1,10 @@
+resources:
+  dashboards:
+    nyc_mobility_quality_dashboard:
+      display_name: NYC Mobility Quality Dashboard
+      file_path: ../dashboards/nyc_mobility_quality.lvdash.json
+      warehouse_id: ${var.warehouse_id}
+
+      permissions:
+        - group_name: users
+          level: CAN_READ
